@@ -47,8 +47,14 @@ on its face:
    every threshold from 0.88 up, so the points pile up at one x; they are drawn, not
    thinned, because that pile is the finding.
 
+**The Master journal-article figures** (`--article`): the Pareto plot at one-column width,
+exact match by precision with the parameter-matched control, the prefill/decode split,
+cooled against uncooled timing, and out-of-domain abstention, written to
+`articles/master/figures/`.
+
 Usage:
     python eval/plots.py
+    python eval/plots.py --article
 """
 
 from __future__ import annotations
@@ -398,7 +404,303 @@ def figure_keyword_curve() -> list[Path]:
     return written
 
 
+# -----------------------------------------------------------------------------
+#  Journal-article figures (articles/master). Same sources as the thesis figures,
+#  redrawn for one 8.5 cm column of the Elsevier CAS double-column layout: vector
+#  PDF only, 7 pt text, no in-figure title (the caption carries it).
+# -----------------------------------------------------------------------------
+
+ARTICLE_MASTER = REPO / "articles" / "master" / "figures"
+SURFACE_A = REPO / "train" / "kaggle_out" / "surface_a.csv"
+ABSTENTION = RESULTS / "nfr9_nfr18_abstention.csv"
+#: The uncooled predecessor of EXP1, plotted only against it in the thermal figure.
+EXP1_UNCOOLED = RESULTS / "exp1.csv"
+
+#: One column of cas-dc is 8.5 cm.
+COLUMN_IN = 8.5 / 2.54
+
+#: Categorical slots 1 and 2 of the validated dataviz palette, and an ordinal blue
+#: ramp (light -> dark) for the three precisions, which are ordered, not unordered.
+BLUE, ORANGE = "#2a78d6", "#eb6834"
+PRECISION_RAMP = {"fp16": "#86b6ef", "Q8_0": "#2a78d6", "Q4_K_M": "#104281"}
+#: Budget and threshold lines are drawn in ink, not in a status colour, and are
+#: told apart by line style and a text label.
+INK = "0.25"
+
+#: Models in parameter order, as the article's tables list them.
+ARTICLE_MODELS = ["smollm2-360m-instruct", "qwen2.5-0.5b-instruct",
+                  "h2o-danube3-500m-chat", "llama-3.2-1b-instruct"]
+SHORT = {"smollm2-360m-instruct": "SmolLM2\n360M", "qwen2.5-0.5b-instruct": "Qwen2.5\n0.5B",
+         "h2o-danube3-500m-chat": "Danube3\n500M", "llama-3.2-1b-instruct": "Llama-3.2\n1B"}
+
+ARTICLE_RC = {"font.size": 7, "axes.labelsize": 7, "xtick.labelsize": 6.5,
+              "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "axes.linewidth": 0.6,
+              "xtick.major.width": 0.6, "ytick.major.width": 0.6,
+              "xtick.major.size": 2.5, "ytick.major.size": 2.5, "hatch.linewidth": 0.6}
+
+
+def _article_axes(axes) -> None:
+    axes.grid(True, axis="y", linewidth=0.4, color="0.9", zorder=0)
+    axes.set_axisbelow(True)
+    for spine in ("top", "right"):
+        axes.spines[spine].set_visible(False)
+
+
+def _save_article(figure, stem: str) -> Path:
+    ARTICLE_MASTER.mkdir(parents=True, exist_ok=True)
+    path = ARTICLE_MASTER / f"{stem}.pdf"
+    figure.savefig(path, bbox_inches="tight", pad_inches=0.02)
+    plt.close(figure)
+    return path
+
+
+def _bar_label(axes, x: float, y: float, text: str, dark: bool = False) -> None:
+    """Value printed inside the top of a bar, so nothing drawn above it can collide."""
+    axes.text(x, y - 0.015, text, ha="center", va="top", fontsize=5.5, rotation=90,
+              color="0.1" if dark else "white",
+              bbox=dict(boxstyle="square,pad=0.1", facecolor="white", edgecolor="none")
+              if dark else None)
+
+
+def golden_em_by_precision() -> dict[str, dict[str, float]]:
+    """model -> {fp16, Q8_0, Q4_K_M} exact match on `test_golden`, where it exists.
+
+    fp16 is the fine-tuned model on the reference surface (`transformers`, no
+    grammar); Q8_0 and Q4_K_M are the GGUF artefacts on the deployed surface under
+    the grammar. The control has no deployed artefact, so it carries fp16 only.
+    """
+    em: dict[str, dict[str, float]] = {m: {} for m in ARTICLE_MODELS}
+    for row in _rows(SURFACE_A):
+        if row["surface"] == "A_fp16_finetuned" and row["split"] == SPLIT:
+            em[row["model"]]["fp16"] = float(row["exact_match"])
+    for row in _rows(SURFACE_B):
+        if row["grammar"] == "on" and row["split"] == SPLIT:
+            em[row["model"]][row["quant"]] = float(row["exact_match"])
+    return em
+
+
+def article_em_bars() -> Path:
+    em = golden_em_by_precision()
+    with plt.rc_context(ARTICLE_RC):
+        figure, axes = plt.subplots(figsize=(COLUMN_IN, 2.3))
+        width = 0.26
+        for index, model in enumerate(ARTICLE_MODELS):
+            present = [p for p in PRECISION_RAMP if p in em[model]]
+            offsets = [(k - (len(present) - 1) / 2) * width for k in range(len(present))]
+            for offset, precision in zip(offsets, present):
+                value = em[model][precision]
+                control = model == "h2o-danube3-500m-chat"
+                axes.bar(index + offset, value, width=width * 0.92,
+                         color="white" if control else PRECISION_RAMP[precision],
+                         edgecolor=PRECISION_RAMP["Q8_0"] if control else "white",
+                         hatch="////" if control else None, linewidth=0.6, zorder=3)
+                _bar_label(axes, index + offset, value, f"{value:.3f}",
+                           dark=control or precision == "fp16")
+        #: The family contrast is fp16 against fp16, Qwen against the control.
+        qwen_fp16 = 1 - width
+        control_fp16 = 2.0
+        top = 1.0
+        axes.plot([qwen_fp16, qwen_fp16, control_fp16, control_fp16],
+                  [em["qwen2.5-0.5b-instruct"]["fp16"] + 0.02, top, top,
+                   em["h2o-danube3-500m-chat"]["fp16"] + 0.02],
+                  color=INK, linewidth=0.6)
+        axes.text((qwen_fp16 + control_fp16) / 2, top + 0.008,
+                  "fp16 vs fp16: 6.5 pp, exact McNemar p = 0.0023",
+                  ha="center", va="bottom", fontsize=5.8, color="0.15")
+        axes.set_xticks(range(len(ARTICLE_MODELS)))
+        axes.set_xticklabels([SHORT[m] for m in ARTICLE_MODELS])
+        axes.set_ylim(0, 1.08)
+        axes.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        axes.set_ylabel("Exact match, golden test set (n = 200)")
+        handles = [plt.Rectangle((0, 0), 1, 1, color=PRECISION_RAMP[p], label=label)
+                   for p, label in (("fp16", "fp16 (reference)"), ("Q8_0", "Q8_0"),
+                                    ("Q4_K_M", "Q4_K_M"))]
+        handles.append(plt.Rectangle((0, 0), 1, 1, facecolor="white", hatch="////",
+                                     edgecolor=PRECISION_RAMP["Q8_0"], linewidth=0.6,
+                                     label="fp16, family control"))
+        axes.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.2),
+                    ncol=4, frameon=False, handlelength=1.2, columnspacing=0.9)
+        _article_axes(axes)
+        return _save_article(figure, "fig_em_bars")
+
+
+def _scored_trials(path: Path) -> dict[str, list[dict]]:
+    by_config: dict[str, list[dict]] = {}
+    for row in read_trials(path):
+        if not row["config"].endswith("-warmup"):
+            by_config.setdefault(row["config"], []).append(row)
+    return by_config
+
+
+def _mean(rows: list[dict], column: str) -> float:
+    return sum(float(r[column]) for r in rows) / len(rows)
+
+
+DEPLOYED = [m for m in ARTICLE_MODELS if m != "h2o-danube3-500m-chat"]
+
+
+def article_latency_stack() -> Path:
+    trials = _scored_trials(EXP1)
+    summaries = _exp1_summaries()
+    with plt.rc_context(ARTICLE_RC):
+        figure, axes = plt.subplots(figsize=(COLUMN_IN, 2.1))
+        for index, model in enumerate(DEPLOYED):
+            config = f"{model}-Q4_K_M"
+            rows = trials[config]
+            prefill, decode = _mean(rows, "slm_prefill_ms"), _mean(rows, "slm_decode_ms")
+            axes.barh(index, prefill, height=0.5, color=ORANGE, zorder=3,
+                      label="prefill (mean)" if index == 0 else None)
+            #: A 2-unit gap between the stacked segments, so the boundary reads.
+            axes.barh(index, decode, left=prefill, height=0.5, color=BLUE, zorder=3,
+                      edgecolor="white", linewidth=0.8,
+                      label="decode (mean)" if index == 0 else None)
+            p95 = float(summaries[config]["total_p95"])
+            axes.plot(p95, index, marker="D", markersize=4, color="0.1", zorder=4,
+                      linestyle="none", label="total, p95" if index == 0 else None)
+            axes.text(p95 + 45, index, f"{p95:,.0f} ms", va="center", fontsize=6,
+                      color="0.15")
+            axes.text(prefill + decode - 25, index, f"{prefill + decode:,.0f}",
+                      va="center", ha="right", fontsize=5.8, color="white", zorder=5)
+        axes.axvline(SLM_BUDGET_MS, color=INK, linewidth=0.8, linestyle="--", zorder=2)
+        axes.text(SLM_BUDGET_MS + 30, len(DEPLOYED) - 0.45, "stage allowance\n1,350 ms (p95)",
+                  fontsize=5.8, color="0.15", va="center")
+        axes.set_yticks(range(len(DEPLOYED)))
+        axes.set_yticklabels([SHORT[m].replace("\n", " ") + "\nQ4_K_M" for m in DEPLOYED])
+        axes.set_xlim(0, 2700)
+        axes.set_ylim(-0.6, len(DEPLOYED) - 0.1)
+        axes.set_xlabel("Language-model time per command (ms), Raspberry Pi 5, cooled, n = 60")
+        axes.grid(True, axis="x", linewidth=0.4, color="0.9", zorder=0)
+        axes.set_axisbelow(True)
+        for spine in ("top", "right"):
+            axes.spines[spine].set_visible(False)
+        axes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=3, frameon=False,
+                    handlelength=1.2)
+        return _save_article(figure, "fig_latency_stack")
+
+
+def _paired_panels(panels, series, value, fmt, stem: str, legend_title=None,
+                   legend_panel: int = 0) -> Path:
+    """Two stacked panels, each a grouped bar per deployed model and one dashed target.
+
+    `panels` holds (column, y label, target, target label, y top); `series` maps a
+    series key to (legend label, colour); `value(model, key, column)` reads a number.
+    Stacked rather than side by side: two panels across 8.5 cm leave each model group
+    too narrow for its tick label.
+    """
+    with plt.rc_context(ARTICLE_RC):
+        figure, all_axes = plt.subplots(2, 1, figsize=(COLUMN_IN, 3.3), sharex=True)
+        keys = list(series)
+        for axes, (column, label, target, target_label, top) in zip(all_axes, panels):
+            for index, model in enumerate(DEPLOYED):
+                for k, key in enumerate(keys):
+                    v = value(model, key, column)
+                    x = index + (k - (len(keys) - 1) / 2) * 0.3
+                    axes.bar(x, v, width=0.28, color=series[key][1], zorder=3,
+                             label=series[key][0] if index == 0 else None)
+                    axes.text(x, v + top * 0.015, fmt(column, v), ha="center",
+                              va="bottom", fontsize=5.5, color="0.15")
+            axes.axhline(target, color=INK, linewidth=0.8, linestyle="--", zorder=2)
+            axes.text(3.05, target + top * 0.015, target_label, fontsize=5.8,
+                      color="0.15", ha="right", va="bottom")
+            axes.set_ylabel(label)
+            axes.set_ylim(0, top)
+            axes.set_xlim(-0.5, 3.1)
+            _article_axes(axes)
+        all_axes[1].set_xticks(range(len(DEPLOYED)))
+        all_axes[1].set_xticklabels([SHORT[m].replace("\n", " ") for m in DEPLOYED])
+        all_axes[legend_panel].legend(loc="upper right", frameon=False, title=legend_title,
+                                      handlelength=1.2, bbox_to_anchor=(1.0, 1.0))
+        figure.align_ylabels(all_axes)
+        figure.tight_layout(h_pad=0.6)
+        return _save_article(figure, stem)
+
+
+def article_thermal() -> Path:
+    runs = {run: {s["config"]: s for s in aggregate(
+                [r for rows in _scored_trials(path).values() for r in rows])}
+            for run, path in (("cooled", EXP1), ("uncooled", EXP1_UNCOOLED))}
+    panels = (("slm_decode_p95", "Decode p95 (ms)", 1100.0, "decode allowance 1,100 ms", 2900),
+              ("tokens_per_second", "Throughput (tok/s)", 20.0, "floor 20 tok/s", 47))
+    series = {"cooled": ("cooled (0% of trials throttled)", BLUE),
+              "uncooled": ("uncooled (100% throttled)", ORANGE)}
+    return _paired_panels(
+        panels, series,
+        lambda model, run, column: float(runs[run][f"{model}-Q4_K_M"][column]),
+        lambda column, v: f"{v:,.0f}" if column.endswith("p95") else f"{v:.1f}",
+        "fig_thermal", legend_panel=1)
+
+
+def article_ood() -> Path:
+    rows = {(r["model"], r["quant"]): r for r in _rows(ABSTENTION) if r["split"] == "test_ood"}
+    panels = (("false_command_rate", "False-command rate", 0.05, "target $\\leq$ 0.05", 0.46),
+              ("safe_failure_rate", "Safe-failure rate", 0.70, "target $\\geq$ 0.70", 0.82))
+    series = {"Q8_0": ("Q8_0", PRECISION_RAMP["Q8_0"]),
+              "Q4_K_M": ("Q4_K_M", PRECISION_RAMP["Q4_K_M"])}
+    return _paired_panels(
+        panels, series,
+        lambda model, quant, column: float(rows[(model, quant)][column]),
+        lambda column, v: f"{v:.2f}", "fig_ood")
+
+
+def article_pareto() -> Path:
+    plottable, _ = _points()
+    frontier = pareto_frontier(plottable)
+    with plt.rc_context(ARTICLE_RC):
+        figure, axes = plt.subplots(figsize=(COLUMN_IN, 2.5))
+        if len(frontier) > 1:
+            axes.plot([p["p95_ms"] for p in frontier], [p["em"] for p in frontier],
+                      color="0.55", linewidth=0.8, zorder=1)
+        for point in plottable:
+            dominated = point not in frontier
+            axes.scatter(point["p95_ms"], point["em"], s=34, marker="o",
+                         facecolor="white" if dominated else BLUE, edgecolor=BLUE,
+                         linewidth=1.2, zorder=3)
+            name = DISPLAY.get(point["model"], point["model"])
+            #: Qwen and Llama are labelled to their left, SmolLM2 below: the frontier
+            #: segment runs down-left from Qwen, and the budget lines sit to the right.
+            above = point["model"] != "smollm2-360m-instruct"
+            axes.annotate(f"{name}\nEM {point['em']:.3f}\n{point['p95_ms']:,.0f} ms, "
+                          f"{point['rss_mb'] / 1024:.2f} GiB",
+                          xy=(point["p95_ms"], point["em"]),
+                          xytext=(-8, 4) if above else (0, -8), textcoords="offset points",
+                          ha="right" if above else "center", va="center" if above else "top",
+                          fontsize=5.8, color="0.15")
+        axes.axvline(SLM_BUDGET_MS, color=INK, linewidth=0.8, linestyle="-", zorder=2)
+        axes.axvline(NFR2_MS, color=INK, linewidth=0.8, linestyle="--", zorder=2)
+        axes.axhline(NFR4_EM, color=INK, linewidth=0.8, linestyle=":", zorder=2)
+        top = blended_transform_factory(axes.transData, axes.transAxes)
+        axes.text(SLM_BUDGET_MS, 1.01, "stage allowance\n1,350 ms", transform=top,
+                  ha="center", va="bottom", fontsize=5.8, color="0.15")
+        axes.text(NFR2_MS, 1.01, "end-to-end budget\n2,500 ms", transform=top,
+                  ha="center", va="bottom", fontsize=5.8, color="0.15")
+        axes.text(60, NFR4_EM + 0.004, "EM threshold 0.85", ha="left", va="bottom",
+                  fontsize=5.8, color="0.15")
+        axes.set_xlim(0, 2900)
+        axes.set_ylim(0.66, 0.98)
+        axes.set_xlabel("Language-model prefill + decode, p95 (ms), Raspberry Pi 5, n = 60")
+        axes.set_ylabel("Exact match, golden test set")
+        axes.grid(True, linewidth=0.4, color="0.9", zorder=0)
+        axes.set_axisbelow(True)
+        for spine in ("top", "right"):
+            axes.spines[spine].set_visible(False)
+        handles = [axes.scatter([], [], s=34, facecolor=BLUE, edgecolor=BLUE,
+                                linewidth=1.2, label="non-dominated"),
+                   axes.scatter([], [], s=34, facecolor="white", edgecolor=BLUE,
+                                linewidth=1.2, label="dominated")]
+        axes.legend(handles=handles, loc="lower right", frameon=False)
+        return _save_article(figure, "fig_pareto")
+
+
+def article_master() -> list[Path]:
+    return [article_em_bars(), article_latency_stack(), article_thermal(), article_ood(),
+            article_pareto()]
+
+
 def run() -> int:
+    if "--article" in sys.argv[1:]:
+        for path in article_master():
+            print(f"wrote {_display(path)}")
+        return 0
     for path in figure_keyword_curve():
         print(f"wrote {_display(path)}")
     plottable, unmeasured = _points()
