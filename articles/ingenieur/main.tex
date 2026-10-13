@@ -57,14 +57,14 @@ run on a Raspberry Pi~5 and which splits commands between two paths. A parse pat
 parses it with a fine-tuned small language model under a grammar. A reflex
 path, a two-class keyword spotter, publishes a hold or an abort without transcription and preempts
 any decode in progress. A membership rule admits to the reflex path only commands whose delay
-changes the physical outcome and whose false trigger can only make the swarm do less; it admits two
-of the ten intents. Every command then passes a semantic validator and a flight
-state machine. All 78 reflex triggers that met a decode cancelled it, with no
-class confusion. The reflex path missed its 150~ms budget (545~ms at the 95th percentile
-idle, 547~ms under load), almost entirely in the spotter's delay; the board added 6--18~ms.
-The parse path took 3,122~ms from the end of speech against 2,500~ms, driven by speech recognition
-and uncached prefill. Under rotor noise, command recognition fell from 0.690 in clean audio
-to 0.590 at 10~dB, missing both targets, and failures did not shift towards safe outcomes. Five
+changes the physical outcome and whose false trigger can only make the swarm do less: two of the
+ten intents. All 78 reflex triggers that met a decode cancelled it, with no class confusion, but
+recovery took 1,195~ms against 300~ms. The reflex path missed its 150~ms budget (545~ms at the 95th
+percentile idle, 547~ms under load), almost entirely before the board's share of 6--18~ms. The
+parse path took 3,122~ms at the 95th percentile from the end of speech against 2,500~ms, driven by
+speech recognition and uncached prefill. Under rotor noise, command recognition fell from 0.690 in
+clean audio to 0.590 at 10~dB, missing both targets, and the safe-failure rate stayed at
+0.014--0.039 against 0.70. Five
 simulated drones converged in all 150 formation trials without collision, which rests on a
 separation clamp. No physical flight, live-microphone run or run with networking disabled was performed.
 \end{abstract}
@@ -73,7 +73,7 @@ separation clamp. No physical flight, live-microphone run or run with networking
 \item A keyword-spotter reflex path preempts a small language model on a Raspberry Pi 5
 \item A two-test membership rule admits only hold and abort to the reflex path
 \item All 78 reflex triggers during inference cancelled the decode in progress
-\item Reflex latency misses its budget in the spotter; the board adds only 6--18 ms
+\item Reflex latency misses its budget before the board; the board adds only 6--18 ms
 \item Rotor noise lowers command recognition from 0.690 (clean) to 0.590 at 10 dB
 \end{highlights}
 
@@ -140,21 +140,21 @@ grounded in a robot's skills~\citep{saycan2022}. Drone-specific agents make late
 TypeFly streams a compact plan language from a remote GPT-4 and keeps response time below
 1.5~s~\citep{typefly2024}, and the agent of \citet{lim2025} prompts open models zero-shot on a local
 workstation GPU. \citet{silva2026} treat the model as an untrusted commander validated on a
-server, and \citet{sikorski2025} and \citet{torkamani2025} run recognition offline beside a local
-model on a GPU-equipped computer or a Jetson board. For swarms, SwarmChat offers voice and text
+server, \citet{sikorski2025} run recognition offline beside a local model on a GPU-equipped
+computer, and \citet{torkamani2025} route between a model on a Jetson board and the cloud. For swarms, SwarmChat offers voice and text
 through rule-based intent matching~\citep{swarmchat2025}; \citet{iannoli2026} evaluate
 general-purpose models on swarm missions in software-in-the-loop simulation; SkySim places a
 cloud-hosted planner above a potential-field layer and holds position when a waypoint is
 rejected~\citep{skysim2026}; and CommandSwarm gates generated behaviour trees with a deterministic
 parser and a safety classifier~\citep{commandswarm2026}. We build on these ideas: deterministic
 gating, hold on rejection and a separation layer below the planner are prior art. None of these
-systems runs its speech and language chain on a single-board computer without a GPU, and none
+systems reports running its speech and language chain on a single-board computer without a GPU, and none
 carries a stop outside the path that interprets commands under a latency budget of its own.
 
 \paragraph{Fast-path and dual-path architectures.} Several systems pair a fast path with a slower
 one. \citet{simoes2024} and \citet{henry2026} compare a direct speech-to-command classifier with a
-recognition-plus-language-model cascade and select one; the fast path is an alternative, not a
-companion. \citet{dualattn2023} use wake-word detection to choose a cheaper branch inside one
+recognition-plus-language-model cascade as alternatives; the fast path replaces the cascade rather
+than accompanying it. \citet{dualattn2023} use wake-word detection to choose a cheaper branch inside one
 recognition model. RelayS2S commits a fast spoken draft when a learned verifier accepts
 it~\citep{relays2s}. MIRA is closest to our design: a gate on voice activity aborts a robot's
 response and motion, preempting a slower deliberative path~\citep{mira}. Its fast path carries one
@@ -170,8 +170,8 @@ commands to a conventional controller.
 
 \paragraph{Gap.} No reviewed system specifies which commands may bypass interpretation, or a
 latency budget for a stop measured while a language model decodes on the same processor. We address
-both, and measure the full speech chain on one CPU-only board as the condition under which the
-reflex path must hold.
+both, and measure the full speech chain, on recorded audio, on one CPU-only board as the condition
+under which the reflex path must hold.
 
 % =============================================================================
 \section{Methods}
@@ -299,7 +299,7 @@ legal in flight, so no validation layer can detect it; the only protection is to
 commands the path carries. A command must pass two tests (Table~\ref{tab:membership}). The first
 asks whether the time saved changes the physical outcome. The difference between the parse and
 reflex budgets is $2{,}500 - 150 = 2{,}350$~ms; at the validator's speed ceiling of 2.0~m/s that is
-4.7~m of travel, larger than every admissible inter-drone spacing (1--5~m). The second asks what
+4.7~m of travel, comparable to the largest admissible inter-drone spacing (5~m). The second asks what
 happens if the command executes without having been spoken: it passes only if the swarm then does
 less, never more. Neither test suffices alone. The first alone would admit urgent movements, whose
 false triggers are uncommanded motion; the second alone would admit harmless commands that gain
@@ -307,7 +307,9 @@ nothing from the fast path but enlarge its false-accept surface.
 
 Exactly two intents pass. \emph{Swarm hold} publishes \texttt{hover}: lateral motion stops and the
 mission can be resumed. \emph{Swarm abort} publishes \texttt{abort}, a descent in place with the
-motors stopped on ground contact. A \emph{resume} phrase is excluded deliberately: a false trigger
+motors stopped on ground contact. These are the effects on the designed route; the link that would
+apply them to the controller is not built (Section~\ref{sec:setup}), so neither was executed on
+the simulated vehicles. A \emph{resume} phrase is excluded deliberately: a false trigger
 would restart motion the operator chose to freeze. Confusion between the two admitted classes is
 benign, since either outcome stops the swarm. The rule applies to the command a phrase publishes,
 not to the phrase, and it states the condition under which a third class could be admitted: both
@@ -356,11 +358,14 @@ probability of 0.5 and ends after 450~ms below 0.35, and segments are padded by 
 spotter consists of two classifier heads, multilayer perceptrons with two hidden layers of 128 units,
 over the frozen feature front end of openWakeWord~\citep{oww}. Each head scores the last 16 speech
 embeddings, about 2~s of audio, and a class fires at most once per 1.0~s. The heads were trained on
-3,000 synthetic positive clips rendered by three Piper voices~\citep{piper} and 5,040 negative clips
-from LibriSpeech~\citep{librispeech}, Speech Commands~\citep{speechcmd} and 720 near-miss clips of
-40 authored phrases, weighted five times. One threshold serves both heads: the highest value on a
-grid at which both classes keep a validation false-reject rate of at most 0.05, which selected
-0.999 before the test split was scored.
+2,100 synthetic positive clips rendered by three Piper voices~\citep{piper} and 3,930 negative clips
+from LibriSpeech~\citep{librispeech}, Speech Commands~\citep{speechcmd} and near-miss clips of
+40 authored phrases, weighted five times; the corpora hold 3,000 positive and 5,040 negative clips
+(720 of them near misses), the rest being held out for validation and test. One threshold serves
+both heads: the highest value on a grid at which both classes keep a validation false-reject rate of
+at most 0.05, which selected 0.999. The heads were fitted twice: the first fit was rejected on its
+validation results after its test split had been scored once, and the threshold was selected on the
+second fit before its test split was scored.
 
 \subsection{Swarm controller}
 \label{sec:controller}
@@ -384,8 +389,9 @@ backend~\citep{pyflyt}, which is exercised by smoke tests only and applies no cl
 \paragraph{Platform and thermal state.} All wall-clock measurements were made on a Raspberry Pi~5
 with 8~GB of memory, an active cooler, the \texttt{performance} governor and the core allocation of
 Section~\ref{sec:budget}. During the latency experiment the processor stayed at 50.5--77.9~$^\circ$C
-and the throttle flag was clear on all 360 trials. Audio was replayed from recordings in real time
-through the frame loop, not captured from a microphone, and the bus ran over the loopback interface
+and the throttle flag was clear on all 360 trials. Audio was replayed from recordings, not captured
+from a microphone: in real time through the frame loop in the latency experiment, and faster than
+real time in the acoustic-robustness experiment. The bus ran over the loopback interface
 with the consumer and state machine on the board.
 
 \paragraph{Latency experiment.} The parse path was timed on the 200 utterances of the golden test
@@ -478,9 +484,10 @@ percentiles do not add. Dashed lines: p95 budgets.}
 The parse path missed its budget (Table~\ref{tab:latency}): its p95 from the end of speech was
 3,122~ms over 226 segments, 622~ms (25\%) above 2,500~ms, and 3,602~ms with the endpointing wait
 included. Two stages missed their allowances: speech recognition at 1,449~ms against 1,200~ms, and
-prefill at 751~ms against 250~ms, because the deployed parser processes the whole prompt for every
-command. Decode met its allowance at 915~ms, as did the endpointing wait (480~ms) and validation with
-dispatch (under 1~ms). Two intervals without a budget row, the wait for the parse-path worker and
+prefill at 751~ms against 250~ms, measured without a prompt cache. Decode met its allowance at
+915~ms, as did the endpointing wait (480~ms) and validation with dispatch (under 1~ms). Prefill and
+decode together took 1,658~ms at p95, against the 1,350~ms sum of their allowances, and the shortest
+speech-recognition time of any segment was 1,063~ms. Two intervals without a budget row, the wait for the parse-path worker and
 the overhead of the requests to the language-model server, were 73~ms and 8~ms at p95.
 Fig.~\ref{fig:latency}a shows speech recognition as the largest share of the mean.
 
@@ -497,12 +504,14 @@ median, 22.9~ms at p99 and 45.5~ms at most. From the keyword onset the reflex pa
 and 1,266~ms loaded at p95, against an 850~ms target.
 
 Of the 80 loaded trials, 78 produced a detection, and each of the 78 found a parse-path decode in
-progress and cancelled it; no cancelled decode completed. In both conditions all 40 abort takes fired
+progress and cancelled it; no cancelled decode completed, so the ordering rule was never exercised
+by a trial and is verified by the consumer's unit tests. In both conditions all 40 abort takes fired
 the abort class and 38 of 40 hold takes fired the hold class, the two misses being one take on both
 replays; no take fired the other class. While listening to the 200 golden utterances, the reflex path
-fired once, a \texttt{hover} during a landing command. Preemption recovery, measured until the
-language-model server reported its slot idle, missed its budget at 1,195~ms (p95; median 601~ms)
-against 300~ms. The cancelled request itself returned within 6.5~ms of the trigger at p95.
+fired once, a \texttt{hover} during a landing command; the offline scoring of the same recordings
+(Section~\ref{sec:res-kws}) produced no false accept, and the records do not explain the difference.
+Preemption recovery, measured until the language-model server reported its slot idle, missed its
+budget at 1,195~ms (p95; median 601~ms; maximum 1,505~ms) against 300~ms. The cancelled request itself returned within 6.5~ms of the trigger at p95.
 
 \subsection{Keyword spotter}
 \label{sec:res-kws}
@@ -524,7 +533,8 @@ golden-set recordings (0.304~h) produced none. A stress stream of authored near-
 34 false accepts in 0.100~h, 31 of them on the hold head. On the synthetic test takes, the
 false-reject rate was 0.027 for hold and 0.007 for abort; on the author's 40 recorded takes it was
 0.050 [0.001, 0.249] for hold and 0.000 [0.000, 0.168] for abort, against a target of at most 0.10,
-so this criterion is not demonstrated either. The curve is flat in false accepts above a threshold of
+so this criterion is not demonstrated either. Measured from the synthetic takes' own anchor, the
+spotter's delay was 131--188~ms at p95. The curve is flat in false accepts above a threshold of
 0.88: the single test false accept survives every threshold in that range.
 
 \subsection{Acoustic robustness}
@@ -575,7 +585,7 @@ rejected equality ($Q = 61.05$, 4 degrees of freedom, $p = 1.7 \times 10^{-12}$)
 McNemar tests separated clean audio from 10 and 5~dB, and 20 and 15~dB from 5~dB. The safe-failure
 rate lay between 0.014 and 0.039 at every level, against a target of at least 0.70: failures grew
 from 62 to 103 while safe failures stayed between one and four. On the reference transcripts the
-parser made 13 failures, none of them safe. Speech recognition differed between the board and the
+parser made 13 failures (an EM of 0.935~\citep{companion}), none of them safe. Speech recognition differed between the board and the
 workstation on two to six transcripts per condition, which moved the 5~dB CRR from 0.495 on the
 workstation to 0.485 on the board; the board's figures are reported.
 
@@ -608,15 +618,16 @@ longer than the line (95\% interval [0.745, 0.845]) and 1.755~s longer than the 
 and the line 0.960~s longer than the wedge ([0.910, 1.010]). At the end of each trial, the mean
 distance of a vehicle from its slot was 0.29~m for the circle, 0.13~m for the line and 0.07~m for the
 wedge. No collision was observed in any trial. The separation clamp intervened 432 times (150 in
-the circle trials, 141 in the line and 141 in the wedge), between 0 and 14 times per trial, and was
-needed in 144 of the 150 trials. The closest approach in every one of the 150 trials was 0.800~m,
-the clamp distance.
+the circle trials, 141 in the line and 141 in the wedge), between 0 and 14 times per trial, and
+intervened in 144 of the 150 trials. The closest approach was 0.800~m, the clamp distance, in each
+of those 144 trials, and 0.82--0.89~m in the other six.
 
 \subsection{Summary against the requirements}
 \label{sec:res-summary}
 
 \begin{table}
-\caption{Every requirement of the system, with its measured result. ``Not demonstrated'': the 95\%
+\caption{Every requirement of the system other than the safe-failure target, which is defined in
+the companion paper and reported in Section~\ref{sec:res-acoustic}, with its measured result. ``Not demonstrated'': the 95\%
 interval straddles the target. ``Not run'': requires an end-to-end run with networking disabled,
 which was not performed.}
 \label{tab:summary}
@@ -656,14 +667,14 @@ safe-failure target, defined in the companion paper, is also missed at every noi
 
 \paragraph{The reflex path: design held, budget missed.} The behaviour the dual-path design exists
 for was observed without exception: every trigger that met a decode cancelled it, the two classes
-were never confused, and loading the parse path added 12~ms to the board's share of the reflex
-latency without delaying any audio frame. The 150~ms budget was nevertheless missed by a wide margin,
+were never confused, and loading the language model added 12~ms at p95 to the board's share of the
+reflex latency without delaying any audio frame. The 150~ms budget was nevertheless missed by a wide margin,
 and the measurement locates the miss in the 540~ms before publication that the spotter's decision
 delay, the 80~ms frame quantisation and the imprecision of the offset anchor share, not in the
 board's 6--18~ms. The core allocation therefore did what it was designed to do, and reducing the
-reflex latency requires changing the spotter, not the board. On the synthetic test takes the
-spotter's delay was 131--188~ms at p95, but it was measured from a different anchor, so the two
-figures are not directly comparable. Recovery after preemption is limited mainly by the
+reflex latency requires changing the spotter, not the board. The spotter's delay on the synthetic
+takes (131--188~ms at p95) was measured from a different anchor, so the two figures are not directly
+comparable. Recovery after preemption is limited mainly by the
 language-model server, which registers a closed connection by polling once per second; its p95 and
 maximum exceed that period, so the polling explains only part of it, and an explicit slot
 cancellation is the first change to measure. For comparison with the parse path, its p95 from the
@@ -686,12 +697,14 @@ validation layers cannot compensate: a misrecognised slot within the envelope, o
 intent, passes all three. The membership rule, which keeps such errors off the reflex path, and the
 state machine, which keeps them from undoing an abort, bound the damage; they do not prevent it. A
 confidence gate that routes low-probability decodes to \texttt{unknown} is the next measurement.
-The endpointer's splits are a separate, recoverable cost: scoring only the last segment would have
-raised the clean CRR to 0.730.
+The endpointer's splits are a separate cost: scoring only the last segment would have raised the
+clean CRR to 0.730, still below the 0.80 target, and a change of scoring rule is not a change to the
+system.
 
 \paragraph{The separation clamp carries the collision result.} Zero collisions in 150 trials
 follows from the clamp, not from the potential field: the field alone let pairs inside 0.80~m 432
-times, in 144 of 150 trials, and the closest approach in every trial equals the clamp distance. A real
+times, in 144 of 150 trials, and in every trial in which the clamp intervened the closest approach
+equals the clamp distance. A real
 airframe exposes no state to rewrite, so on hardware the same guarantee would have to act through
 commanded accelerations or thrust. Formation accuracy is saturated by the protocol and does not
 discriminate between the formations; convergence time does.
@@ -701,33 +714,36 @@ open models of the same families zero-shot on a workstation GPU, accepts typed t
 relies on a human to switch to position mode as its fallback, and reports no latency. Our system takes
 speech on a CPU-only board, fine-tunes and constrains its model, commands five vehicles, and carries
 its stop in software under a measured budget. The two are therefore compared by design rather than by
-measurement. CommandSwarm~\citep{commandswarm2026} and SkySim~\citep{skysim2026} share our use of
-deterministic gates and of a hold on rejection; neither runs on a single-board computer nor separates
-its stop from the interpreting path.
+measurement. CommandSwarm~\citep{commandswarm2026} shares our use of deterministic gates, and
+SkySim~\citep{skysim2026} our hold on rejection; neither reports running on a single-board computer,
+and neither separates its stop from the interpreting path.
 
 \paragraph{Limitations.} The formation results come from a kinematic simulator without rotor
 dynamics, wind or downwash; the rigid-body backend was exercised by smoke tests only, at an effective
 control rate of 24~Hz, and no physical flight was performed. The audio was replayed recordings of one
 speaker in one session, not live capture. The bus ran over loopback, so no wireless hop and no loss
 of its unacknowledged UDP datagrams was measured. The link from the state machine to the controller is
-not built, and formations were commanded directly; no run joined speech to formation. Offline
+not built, and formations were commanded directly; no run joined speech to formation, and the
+effects of a hold or an abort on the vehicles, including the time to rest, were not measured. Offline
 operation was not verified by a run with networking disabled, and the live demonstration was not
 performed. Formation commands carry no speed, so the validator's 2.0~m/s ceiling does not apply to
 formation changes, while the backends allow 3~m/s; vehicle speeds were not recorded. Preemption does
 not reach utterances queued behind the one in progress, nor a trigger that arrives during
-transcription. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
+transcription, and no reflex trial overlapped speech recognition. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
 to decide either keyword criterion.
 
 % =============================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 
-A dual-path voice interface for a five-drone swarm can run its speech and language stages on a
-Raspberry Pi~5 with a fine-tuned small language model, and a keyword-spotter reflex path can preempt that model reliably:
-every trigger during inference cancelled the decode, and the board added only 6--18~ms to the stop.
+A dual-path voice interface for a swarm of five simulated drones can run its speech and language
+stages on a Raspberry Pi~5, on recorded audio, with a fine-tuned small language model, and a
+keyword-spotter reflex path can preempt that model: every trigger during inference cancelled the
+decode, and the board added only 6--18~ms to the stop, although neither keyword-spotter error
+criterion is demonstrated and recovery after preemption missed its budget.
 A two-test membership rule restricts the reflex path to a hold and an abort, and three validation
-layers bound what a wrong command can do. The system misses its latency budgets on both paths, in the
-spotter's delay, speech recognition and uncached prefill, and misses its recognition targets under
+layers bound what a wrong command can do. The system misses its latency budgets on both paths, before the board's share on the reflex path
+and in speech recognition and uncached prefill on the parse path, and misses its recognition targets under
 rotor noise, with errors that do not become safer as noise rises. Future work will reduce the spotter's
 decision delay, cache the prompt prefix after a parity check, replace the server's polling with an
 explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate, build the
