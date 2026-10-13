@@ -50,7 +50,8 @@ on its face:
 **The Master journal-article figures** (`--article`): the Pareto plot at one-column width,
 exact match by precision with the parameter-matched control, the prefill/decode split,
 cooled against uncooled timing, and out-of-domain abstention, written to
-`articles/master/figures/`.
+`articles/master/figures/`, and the Ingenieur article's keyword curve, two-path latency,
+recognition against noise and formation box plots, written to `articles/ingenieur/figures/`.
 
 Usage:
     python eval/plots.py
@@ -79,6 +80,7 @@ if __package__ in (None, ""):   # `python eval/plots.py`
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval.bench import aggregate, read_trials
+from eval.stats import nearest_rank
 
 REPO = Path(__file__).resolve().parent.parent
 RESULTS = REPO / "results"
@@ -446,10 +448,11 @@ def _article_axes(axes) -> None:
         axes.spines[spine].set_visible(False)
 
 
-def _save_article(figure, stem: str) -> Path:
-    ARTICLE_MASTER.mkdir(parents=True, exist_ok=True)
-    path = ARTICLE_MASTER / f"{stem}.pdf"
-    figure.savefig(path, bbox_inches="tight", pad_inches=0.02)
+def _save_article(figure, stem: str, folder: Path = ARTICLE_MASTER) -> Path:
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{stem}.pdf"
+    #: No creation date in the file, so regenerating an unchanged figure leaves git clean.
+    figure.savefig(path, bbox_inches="tight", pad_inches=0.02, metadata={"CreationDate": None})
     plt.close(figure)
     return path
 
@@ -696,9 +699,243 @@ def article_master() -> list[Path]:
             article_pareto()]
 
 
+# -----------------------------------------------------------------------------
+#  Ingenieur journal-article figures (articles/ingenieur). The architecture is TikZ in
+#  the manuscript and the trajectory figure is reused from results/ as it is.
+# -----------------------------------------------------------------------------
+
+ARTICLE_INGENIEUR = REPO / "articles" / "ingenieur" / "figures"
+EXP2_RAW = RESULTS / "exp2_raw"
+EXP3_PI = RESULTS / "exp3_pi.csv"
+EXP4 = RESULTS / "exp4.csv"
+FORMATIONS = ("circle", "line", "wedge")
+
+#: The latency experiment's budgets: parse path from the end of speech, reflex path from
+#: the keyword offset (p95 targets, ms).
+PARSE_BUDGET_MS = 2500.0
+REFLEX_BUDGET_MS = 150.0
+
+#: Recognition targets: CRR in clean audio and at 10 dB.
+CRR_CLEAN_TARGET = 0.80
+CRR_10DB_TARGET = 0.65
+
+
+def _jsonl(path: Path) -> list[dict]:
+    if not path.is_file():
+        raise SystemExit(f"missing {_display(path)} -- run the experiment that writes it")
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def article_keyword_curve() -> Path:
+    curve = keyword_curve("test")
+    points, operating = curve["points"], curve["operating"]
+    colours = {"swarm_hold": BLUE, "swarm_abort": ORANGE}
+    with plt.rc_context(ARTICLE_RC):
+        figure, axes = plt.subplots(figsize=(COLUMN_IN, 2.4))
+        low, high = curve["fa_ci95"]
+        axes.axvspan(low, high, color="0.5", alpha=0.12, linewidth=0, zorder=0)
+        axes.text(low * 1.15, 0.112, "95% CI of the false-accept\nrate at the operating point",
+                  ha="left", va="top", fontsize=5.8, color="0.25")
+        for key, label in KEYWORD_CLASSES.items():
+            axes.plot([p["fa_per_hour_ambient"] for p in points], [p["frr"][key] for p in points],
+                      color=colours[key], linewidth=1.0, marker="o", markersize=2, zorder=3,
+                      label=f"{label} (n = {curve['n_positives'][key]})")
+            axes.scatter(operating["fa_per_hour_ambient"], operating["frr"][key], s=30,
+                         facecolor="white", edgecolor=colours[key], linewidth=1.3, zorder=4)
+        axes.annotate(f"operating threshold {curve['threshold']:g}",
+                      xy=(operating["fa_per_hour_ambient"], operating["frr"]["swarm_hold"]),
+                      xytext=(10, 12), textcoords="offset points", ha="left", fontsize=5.8,
+                      color="0.15", arrowprops=dict(arrowstyle="-", color="0.5", linewidth=0.5))
+        axes.axvline(KEYWORD_FA_BUDGET_PER_HOUR, color=INK, linewidth=0.8, linestyle="--", zorder=2)
+        axes.text(KEYWORD_FA_BUDGET_PER_HOUR * 0.9, 0.06, "false-accept\ntarget 1/h", ha="right",
+                  va="center", fontsize=5.8, color="0.15")
+        axes.axhline(KEYWORD_FRR_BUDGET, color=INK, linewidth=0.8, linestyle=":", zorder=2)
+        axes.text(max(p["fa_per_hour_ambient"] for p in points) * 1.4, KEYWORD_FRR_BUDGET + 0.002,
+                  f"false-reject target {KEYWORD_FRR_BUDGET:.2f}", ha="right", va="bottom",
+                  fontsize=5.8, color="0.15")
+        axes.set_xscale("log")
+        axes.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+        axes.set_xlim(low * 0.6, max(p["fa_per_hour_ambient"] for p in points) * 1.6)
+        axes.set_ylim(-0.004, 0.118)
+        axes.set_xlabel(f"False accepts per hour, ambient speech ({curve['hours']:.3f} h)")
+        axes.set_ylabel("False-reject rate (synthetic test takes)")
+        axes.grid(True, which="both", linewidth=0.4, color="0.92", zorder=0)
+        axes.set_axisbelow(True)
+        for spine in ("top", "right"):
+            axes.spines[spine].set_visible(False)
+        axes.legend(loc="center right", frameon=False, bbox_to_anchor=(1.0, 0.62))
+        return _save_article(figure, "fig_keyword_curve", ARTICLE_INGENIEUR)
+
+
+#: Parse-path stages in pipeline order, as (label, function of one segment record).
+PARSE_STAGES = (
+    ("queue", lambda s: s["queue_ms"]),
+    ("recognition", lambda s: s["stt_ms"]),
+    ("prefill", lambda s: s["prefill_ms"]),
+    ("decode", lambda s: s["decode_ms"]),
+    ("overhead + validation", lambda s: s["parse_wall_ms"] - s["prefill_ms"]
+     - s["decode_ms"] + s["validate_fsm_ms"]),
+)
+PARSE_COLOURS = ("#c3c2b7", BLUE, ORANGE, "#1baf7a", "#eda100")
+
+
+def parse_stage_means() -> tuple[list[tuple[str, float]], float, int]:
+    """Mean of each parse-path stage per segment, the p95 of the measured total, and n.
+
+    The stages tile the span from the end of speech to the state machine, so their means
+    add up to the mean total; the p95 is taken from the recorded totals, never summed.
+    """
+    segments = [seg for row in _jsonl(EXP2_RAW / "branch_b.jsonl") for seg in row["segments"]]
+    means = [(label, sum(f(s) for s in segments) / len(segments)) for label, f in PARSE_STAGES]
+    total_p95 = nearest_rank([s["e2e_t0_ms"] for s in segments], 95)
+    return means, total_p95, len(segments)
+
+
+def reflex_means(condition: str) -> tuple[float, float, float, int]:
+    """(spotter delay + quantisation mean, Pi compute + publish mean, total p95, n)."""
+    from eval.exp2 import algorithmic_ms, first_own_event
+
+    pairs = [(r, first_own_event(r)) for r in _jsonl(EXP2_RAW / f"{condition}.jsonl")]
+    pairs = [(r, e) for r, e in pairs if e is not None]
+    algorithmic = [algorithmic_ms(r, e) for r, e in pairs]
+    system = [e["latency_offset_ms"] - a for (_, e), a in zip(pairs, algorithmic)]
+    total_p95 = nearest_rank([e["latency_offset_ms"] for _, e in pairs], 95)
+    return (sum(algorithmic) / len(pairs), sum(system) / len(pairs), total_p95, len(pairs))
+
+
+def article_latency_paths() -> Path:
+    means, parse_p95, n_parse = parse_stage_means()
+    with plt.rc_context(ARTICLE_RC):
+        figure, (top, bottom) = plt.subplots(
+            2, 1, figsize=(COLUMN_IN, 3.5), gridspec_kw={"height_ratios": [1, 1.5]})
+        left = 0.0
+        for (label, value), colour in zip(means, PARSE_COLOURS):
+            top.barh(0, value, left=left, height=0.5, color=colour, edgecolor="white",
+                     linewidth=0.8, zorder=3, label=label)
+            if value > 250:
+                top.text(left + value / 2, 0, f"{value:,.0f}", ha="center", va="center",
+                         fontsize=5.8, color="white" if colour != "#c3c2b7" else "0.1", zorder=4)
+            left += value
+        top.plot(parse_p95, 0, marker="D", markersize=4, color="0.1", zorder=5, linestyle="none")
+        top.text(parse_p95 + 40, 0.18, f"p95 {parse_p95:,.0f}", fontsize=5.8, color="0.15")
+        top.axvline(PARSE_BUDGET_MS, color=INK, linewidth=0.8, linestyle="--", zorder=2)
+        top.text(PARSE_BUDGET_MS, 1.0, "budget 2,500 ms (p95)", ha="center", va="bottom",
+                 fontsize=5.8, color="0.15", transform=blended_transform_factory(
+                     top.transData, top.transAxes))
+        top.set_xlim(0, 3500)
+        top.set_ylim(-0.45, 0.6)
+        top.set_yticks([0])
+        top.set_yticklabels([f"parse path\n(n = {n_parse})"])
+        top.set_xlabel("ms from end of speech (mean per stage)")
+        top.legend(loc="upper center", bbox_to_anchor=(0.45, -0.75), ncol=3, frameon=False,
+                   handlelength=1.0, columnspacing=0.8)
+        for index, condition in enumerate(("idle", "loaded")):
+            algorithmic, system, p95, n = reflex_means(condition)
+            bottom.barh(index, algorithmic, height=0.5, color=BLUE, zorder=3,
+                        label="spotter delay + frame quantisation" if index == 0 else None)
+            bottom.barh(index, system, left=algorithmic, height=0.5, color=ORANGE,
+                        edgecolor="white", linewidth=0.6, zorder=3,
+                        label="Pi compute + publish" if index == 0 else None)
+            bottom.plot(p95, index, marker="D", markersize=4, color="0.1", zorder=5,
+                        linestyle="none", label="total, p95" if index == 0 else None)
+            bottom.text(p95 + 8, index + 0.18, f"{p95:,.0f}", fontsize=5.8, color="0.15")
+            bottom.text(algorithmic + system + 6, index - 0.02,
+                        f"mean {algorithmic:,.0f} + {system:,.0f}", fontsize=5.6, va="center",
+                        color="0.15")
+        bottom.axvline(REFLEX_BUDGET_MS, color=INK, linewidth=0.8, linestyle="--", zorder=2)
+        bottom.text(REFLEX_BUDGET_MS, 1.0, "budget 150 ms (p95)", ha="center", va="bottom",
+                    fontsize=5.8, color="0.15", transform=blended_transform_factory(
+                        bottom.transData, bottom.transAxes))
+        bottom.set_yticks([0, 1])
+        bottom.set_yticklabels([f"reflex, idle\n(n = {n})", f"reflex, loaded\n(n = {n})"])
+        bottom.set_xlim(0, 640)
+        bottom.set_ylim(-0.5, 1.6)
+        bottom.set_xlabel("ms from keyword offset")
+        bottom.legend(loc="upper center", bbox_to_anchor=(0.4, -0.42), ncol=2, frameon=False,
+                      handlelength=1.0, columnspacing=0.8)
+        for axes, tag in ((top, "(a)"), (bottom, "(b)")):
+            axes.grid(True, axis="x", linewidth=0.4, color="0.9", zorder=0)
+            axes.set_axisbelow(True)
+            for spine in ("top", "right"):
+                axes.spines[spine].set_visible(False)
+            axes.text(-0.02, 1.02, tag, transform=axes.transAxes, fontsize=7, ha="right",
+                      va="bottom", fontweight="bold")
+        figure.subplots_adjust(left=0.24, right=0.97, top=0.94, bottom=0.2, hspace=1.35)
+        return _save_article(figure, "fig_latency_paths", ARTICLE_INGENIEUR)
+
+
+def article_snr() -> Path:
+    rows = _rows(EXP3_PI)
+    labels = ["clean" if r["condition"] == "clean" else f"{r['snr_db']} dB" for r in rows]
+    x = list(range(len(rows)))
+    panels = (("crr", "Command recognition rate", 1.0),
+              ("wer", "Word error rate", 0.45))
+    with plt.rc_context(ARTICLE_RC):
+        figure, all_axes = plt.subplots(2, 1, figsize=(COLUMN_IN, 3.0), sharex=True)
+        for axes, (key, label, top) in zip(all_axes, panels):
+            value = [float(r[key]) for r in rows]
+            lo = [float(r[f"{key}_lo"]) for r in rows]
+            hi = [float(r[f"{key}_hi"]) for r in rows]
+            axes.fill_between(x, lo, hi, color=BLUE, alpha=0.18, linewidth=0, zorder=2,
+                              label="95% bootstrap CI")
+            axes.plot(x, value, color=BLUE, marker="o", markersize=3, linewidth=1.2, zorder=3,
+                      label=label.lower())
+            for xi, v in zip(x, value):
+                axes.text(xi, v + top * 0.03, f"{v:.3f}", ha="center", va="bottom",
+                          fontsize=5.5, color="0.15")
+            axes.set_ylabel(label)
+            axes.set_ylim(0, top)
+            _article_axes(axes)
+        crr = all_axes[0]
+        crr.axhline(CRR_CLEAN_TARGET, color=INK, linewidth=0.8, linestyle="--", zorder=1)
+        crr.text(5.35, CRR_CLEAN_TARGET + 0.015, "clean target 0.80", ha="right", fontsize=5.8,
+                 color="0.15")
+        crr.axhline(CRR_10DB_TARGET, color=INK, linewidth=0.8, linestyle=":", zorder=1)
+        crr.text(5.35, CRR_10DB_TARGET + 0.015, "10 dB target 0.65", ha="right", fontsize=5.8,
+                 color="0.15")
+        crr.legend(loc="lower left", frameon=False, handlelength=1.2)
+        all_axes[1].set_xticks(x)
+        all_axes[1].set_xticklabels(labels)
+        all_axes[1].set_xlabel("Rotor-noise condition (signal-to-noise ratio)")
+        all_axes[1].set_xlim(-0.3, 5.4)
+        figure.align_ylabels(all_axes)
+        figure.tight_layout(h_pad=0.5)
+        return _save_article(figure, "fig_snr", ARTICLE_INGENIEUR)
+
+
+def article_formation_boxes() -> Path:
+    rows = _rows(EXP4)
+    panels = (("convergence_seconds", "Convergence time (s, simulated)", float),
+              ("clamp_activations", "Clamp interventions per trial", int))
+    with plt.rc_context(ARTICLE_RC):
+        figure, all_axes = plt.subplots(1, 2, figsize=(COLUMN_IN, 2.0))
+        for axes, (key, label, kind) in zip(all_axes, panels):
+            data = [[kind(r[key]) for r in rows if r["shape"] == shape] for shape in FORMATIONS]
+            axes.boxplot(data, widths=0.5, patch_artist=True,
+                         boxprops=dict(facecolor="#cde2fb", edgecolor=BLUE, linewidth=0.8),
+                         medianprops=dict(color="#104281", linewidth=1.2),
+                         whiskerprops=dict(color=BLUE, linewidth=0.8),
+                         capprops=dict(color=BLUE, linewidth=0.8),
+                         flierprops=dict(marker="o", markersize=2.5, markerfacecolor="white",
+                                         markeredgecolor=BLUE, markeredgewidth=0.6))
+            axes.set_xticks([1, 2, 3])
+            axes.set_xticklabels(FORMATIONS)
+            axes.set_ylabel(label)
+            _article_axes(axes)
+        all_axes[0].set_ylim(0, 4.8)
+        all_axes[1].set_ylim(bottom=-0.5)
+        figure.tight_layout(w_pad=1.2)
+        return _save_article(figure, "fig_formation_boxes", ARTICLE_INGENIEUR)
+
+
+def article_ingenieur() -> list[Path]:
+    return [article_keyword_curve(), article_latency_paths(), article_snr(),
+            article_formation_boxes()]
+
+
 def run() -> int:
     if "--article" in sys.argv[1:]:
-        for path in article_master():
+        for path in article_master() + article_ingenieur():
             print(f"wrote {_display(path)}")
         return 0
     for path in figure_keyword_curve():
