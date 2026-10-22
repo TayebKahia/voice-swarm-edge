@@ -588,7 +588,8 @@ def _paired_panels(panels, series, value, fmt, stem: str, legend_title=None,
     `panels` holds (column, y label, target, target label, y top); `series` maps a
     series key to (legend label, colour); `value(model, key, column)` reads a number.
     Stacked rather than side by side: two panels across 8.5 cm leave each model group
-    too narrow for its tick label.
+    too narrow for its tick label. A value label that the target line would strike
+    through is drawn inside the top of its bar instead.
     """
     with plt.rc_context(ARTICLE_RC):
         figure, all_axes = plt.subplots(2, 1, figsize=(COLUMN_IN, 3.3), sharex=True)
@@ -600,8 +601,13 @@ def _paired_panels(panels, series, value, fmt, stem: str, legend_title=None,
                     x = index + (k - (len(keys) - 1) / 2) * 0.3
                     axes.bar(x, v, width=0.28, color=series[key][1], zorder=3,
                              label=series[key][0] if index == 0 else None)
-                    axes.text(x, v + top * 0.015, fmt(column, v), ha="center",
-                              va="bottom", fontsize=5.5, color="0.15")
+                    y = v + top * 0.015
+                    if y < target < y + top * 0.075:
+                        axes.text(x, v - top * 0.015, fmt(column, v), ha="center",
+                                  va="top", fontsize=5.5, color="white", zorder=4)
+                    else:
+                        axes.text(x, y, fmt(column, v), ha="center", va="bottom",
+                                  fontsize=5.5, color="0.15")
             axes.axhline(target, color=INK, linewidth=0.8, linestyle="--", zorder=2)
             axes.text(3.05, target + top * 0.015, target_label, fontsize=5.8,
                       color="0.15", ha="right", va="bottom")
@@ -622,7 +628,7 @@ def article_thermal() -> Path:
     runs = {run: {s["config"]: s for s in aggregate(
                 [r for rows in _scored_trials(path).values() for r in rows])}
             for run, path in (("cooled", EXP1), ("uncooled", EXP1_UNCOOLED))}
-    panels = (("slm_decode_p95", "Decode p95 (ms)", 1100.0, "decode allowance 1,100 ms", 2900),
+    panels = (("slm_decode_p95", "Decode p95 (ms)", 1100.0, "allowance\n1,100 ms", 2900),
               ("tokens_per_second", "Throughput (tok/s)", 20.0, "floor 20 tok/s", 47))
     series = {"cooled": ("cooled (0% of trials throttled)", BLUE),
               "uncooled": ("uncooled (100% throttled)", ORANGE)}

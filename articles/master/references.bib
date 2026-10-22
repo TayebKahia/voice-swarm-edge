@@ -124,6 +124,7 @@
                Language Processing (EMNLP)},
   pages     = {10932--10952},
   year      = {2023},
+  doi       = {10.18653/v1/2023.emnlp-main.674},
   eprint    = {2305.13971},
   archivePrefix = {arXiv},
   url       = {https://arxiv.org/abs/2305.13971}
@@ -162,7 +163,8 @@
   eprint       = {2410.11387},
   archivePrefix= {arXiv},
   primaryClass = {cs.RO},
-  url          = {https://arxiv.org/abs/2410.11387}
+  url          = {https://arxiv.org/abs/2410.11387},
+  note         = {NeurIPS 2024 Workshop on Open-World Agents}
 }
 
 @inproceedings{gptq,
@@ -210,6 +212,7 @@
                Artificial Intelligence (IJCAI)},
   pages     = {4577--4584},
   year      = {2021},
+  doi       = {10.24963/ijcai.2021/622},
   eprint    = {2103.03095},
   archivePrefix = {arXiv},
   url       = {https://arxiv.org/abs/2103.03095}
@@ -290,13 +293,14 @@
   note         = {Accessed 2026-09-22}
 }
 
-@inproceedings{smollm2,
-  title        = {{SmolLM2}: When Smol Goes Big --- Data-Centric Training of a Fully Open
-                  Small Language Model},
+@misc{smollm2,
+  title        = {{SmolLM2}: When Smol Goes Big --- Data-Centric Training of a Small Language Model},
   author       = {Ben Allal, Loubna and others},
-  booktitle    = {Second Conference on Language Modeling (COLM)},
   year         = {2025},
-  url          = {https://openreview.net/forum?id=3JiCl2A14H}
+  eprint       = {2502.02737},
+  archivePrefix= {arXiv},
+  primaryClass = {cs.CL},
+  url          = {https://arxiv.org/abs/2502.02737}
 }
 
 @misc{qwen25,
@@ -381,6 +385,90 @@
   url          = {https://docs.pytorch.org/docs/stable/notes/randomness.html},
   note         = {Accessed 2026-09-23},
   year         = {2026}
+}
+
+@misc{piper,
+  title        = {{Piper}: A Fast, Local Neural Text-to-Speech System},
+  author       = {Hansen, Michael and {the Open Home Foundation}},
+  year         = {2026},
+  version      = {1.8.0},
+  url          = {https://github.com/OHF-Voice/piper1-gpl},
+  note         = {Accessed 2026-09-23}
+}
+
+@inproceedings{dregon,
+  title     = {{DREGON}: Dataset and Methods for {UAV}-Embedded Sound Source Localization},
+  author    = {Strauss, Martin and Mordel, Pol and Miguet, Victor and Deleforge, Antoine},
+  booktitle = {2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages     = {1--8},
+  year      = {2018},
+  publisher = {IEEE},
+  doi       = {10.1109/IROS.2018.8593581},
+  url       = {http://dregon.inria.fr/datasets/dregon/}
+}
+
+@inproceedings{esc50,
+  title     = {{ESC}: Dataset for Environmental Sound Classification},
+  author    = {Piczak, Karol J.},
+  booktitle = {Proceedings of the 23rd ACM International Conference on Multimedia},
+  pages     = {1015--1018},
+  year      = {2015},
+  publisher = {ACM},
+  doi       = {10.1145/2733373.2806390},
+  url       = {https://github.com/karolpiczak/ESC-50}
+}
+
+@inproceedings{commonvoice,
+  title     = {{Common Voice}: A Massively-Multilingual Speech Corpus},
+  author    = {Ardila, Rosana and Branson, Megan and Davis, Kelly and Kohler, Michael and
+               Meyer, Josh and Henretty, Michael and Morais, Reuben and Saunders, Lindsay and
+               Tyers, Francis and Weber, Gregor},
+  booktitle = {Proceedings of the Twelfth Language Resources and Evaluation Conference (LREC)},
+  pages     = {4218--4222},
+  year      = {2020},
+  publisher = {European Language Resources Association},
+  url       = {https://aclanthology.org/2020.lrec-1.520/}
+}
+
+@inproceedings{transformers,
+  title        = {Transformers: State-of-the-Art Natural Language Processing},
+  author       = {Wolf, Thomas and Debut, Lysandre and Sanh, Victor and Chaumond, Julien and
+                  Delangue, Clement and Moi, Anthony and Cistac, Pierric and Rault, Tim and
+                  Louf, R{\'e}mi and Funtowicz, Morgan and Davison, Joe and Shleifer, Sam and
+                  von Platen, Patrick and Ma, Clara and Jernite, Yacine and Plu, Julien and
+                  Xu, Canwen and Le Scao, Teven and Gugger, Sylvain and Drame, Mariama and
+                  Lhoest, Quentin and Rush, Alexander M.},
+  booktitle    = {Proceedings of the 2020 Conference on Empirical Methods in Natural Language
+                  Processing: System Demonstrations},
+  pages        = {38--45},
+  year         = {2020},
+  publisher    = {Association for Computational Linguistics},
+  doi          = {10.18653/v1/2020.emnlp-demos.6}
+}
+
+@misc{peft,
+  title        = {{PEFT}: State-of-the-art Parameter-Efficient Fine-Tuning methods},
+  author       = {Mangrulkar, Sourab and Gugger, Sylvain and Debut, Lysandre and Belkada, Younes
+                  and Paul, Sayak and Bossan, Benjamin and Tietz, Marian},
+  year         = {2022},
+  version      = {0.19.1},
+  url          = {https://github.com/huggingface/peft},
+  note         = {Accessed 2026-09-23}
+}
+
+@inproceedings{pytorch,
+  title        = {{PyTorch}: An Imperative Style, High-Performance Deep Learning Library},
+  author       = {Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and
+                  Bradbury, James and Chanan, Gregory and Killeen, Trevor and Lin, Zeming and
+                  Gimelshein, Natalia and Antiga, Luca and Desmaison, Alban and K{\"o}pf, Andreas
+                  and Yang, Edward and DeVito, Zachary and Raison, Martin and Tejani, Alykhan and
+                  Chilamkurthy, Sasank and Steiner, Benoit and Fang, Lu and Bai, Junjie and
+                  Chintala, Soumith},
+  booktitle    = {Advances in Neural Information Processing Systems 32},
+  year         = {2019},
+  eprint       = {1912.01703},
+  archivePrefix= {arXiv},
+  url          = {https://arxiv.org/abs/1912.01703}
 }
 
 @unpublished{companion,
