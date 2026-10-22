@@ -16,6 +16,23 @@
 \usepackage{tikz}
 \usetikzlibrary{fit,backgrounds}
 
+%% Change tracking for the step-1 audit (articles/REVIEW_step1_audit.md).
+%% cas-dc already defines \comment, so the margin note of `changes' is \chcomment here.
+\usepackage[draft,commandnameprefix=ifneeded]{changes}   % switch to [final] to strip all markup before submission
+\definechangesauthor[name={Audit}, color=blue]{AU}
+\setaddedmarkup{{\color{blue}#1}}
+\setdeletedmarkup{{\color{red}\sout{#1}}}
+\setlength{\marginparwidth}{1.2cm}
+\setuptodonotes{size=\tiny}
+%% Inside floats, where margin notes cannot go, the finding ID is printed inline instead. Whole
+%% blocks (a list) cannot be struck through, so they are coloured instead. Like the rest of the
+%% markup, all of this disappears under [final].
+\makeatletter
+\newcommand{\AuditID}[1]{\ifbool{Changes@optiondraft}{\textsuperscript{\color{blue}\tiny[#1]}}{}}
+\newcommand{\AuditDeletedBlock}[1]{\ifbool{Changes@optiondraft}{{\color{red}#1}}{}}
+\newcommand{\AuditAddedBlock}[1]{\ifbool{Changes@optiondraft}{{\color{blue}#1}}{#1}}
+\makeatother
+
 \newcommand{\QF}{Q4\_K\_M}
 
 %% The template always prints an "ORCID(s):" footnote line. It is suppressed until the
@@ -59,14 +76,14 @@ path, a two-class keyword spotter, publishes a hold or an abort without transcri
 any decode in progress. A membership rule admits to the reflex path only commands whose delay
 changes the physical outcome and whose false trigger can only make the swarm do less: two of the
 ten intents. All 78 reflex triggers that met a decode cancelled it, with no class confusion, but
-recovery took 1,195~ms against 300~ms. The reflex path missed its 150~ms budget (545~ms at the 95th
+recovery took 1,195~ms\added[id=AU]{ at the 95th percentile} against 300~ms.\AuditID{I-20} The reflex path missed its 150~ms budget (545~ms at the 95th
 percentile idle, 547~ms under load), almost entirely before the board's share of 6--18~ms. The
-parse path took 3,122~ms at the 95th percentile from the end of speech against 2,500~ms, driven by
+parse path took 3,122~ms at the 95th percentile from the \replaced[id=AU]{endpointer's end-of-utterance decision}{end of speech}\AuditID{X-01} against 2,500~ms, driven by
 speech recognition and uncached prefill. Under rotor noise, command recognition fell from 0.690 in
 clean audio to 0.590 at 10~dB, missing both targets, and the safe-failure rate stayed at
-0.014--0.039 against 0.70. Five
-simulated drones converged in all 150 formation trials without collision, which rests on a
-separation clamp. No physical flight, live-microphone run or run with networking disabled was performed.
+0.014--0.039 against 0.70. \replaced[id=AU]{Commanded directly rather than by voice, five drones in a kinematic simulator}{Five
+simulated drones} converged in all 150 formation trials without collision, \replaced[id=AU]{a result that rests}{which rests} on a
+separation clamp.\AuditID{I-06} No physical flight, live-microphone run or run with networking disabled was performed.
 \end{abstract}
 
 \begin{highlights}
@@ -107,9 +124,9 @@ systems we reviewed.
 
 This article presents a voice interface for a swarm of five drones whose speech and language stages all run on a
 Raspberry Pi~5, with no cloud service, and addresses both problems. A companion paper selects and evaluates the language
-model it uses~\citep{companion}; here we describe and evaluate the system built around it. The
-contributions are:
-\begin{itemize}
+model it uses~\citep{companion}; here we describe and evaluate the system built around it. \replaced[id=AU]{The contribution we claim is narrow:}{The
+contributions are:}\chcomment[id=AU]{I-01}
+\AuditDeletedBlock{\begin{itemize}
 \item A dual-path runtime in which a keyword-spotter \emph{reflex path} preempts language-model
   inference on the \emph{parse path}, with an ordering rule that prevents a stale command from
   overriding a stop whether or not the cancellation succeeds.
@@ -122,7 +139,23 @@ contributions are:
   load, together with keyword-spotter error rates, recognition under rotor noise including the
   direction of the errors, and formation control of five simulated drones. Every missed target is
   reported and located.
+\end{itemize}}
+\AuditAddedBlock{\begin{itemize}
+\item A membership rule for a path that bypasses interpretation: a command qualifies only if its
+  delay changes the physical outcome and its unprompted execution can only make the swarm do less.
+  For the ten intents of the schema the rule admits exactly two, a hold and an abort, and it states
+  the condition under which a third class could be admitted.
+\item A latency budget of that path's own, specified per stage and measured on the board while
+  the language model decodes on the same processor.
 \end{itemize}
+To measure them we built a dual-path runtime in which a keyword-spotter \emph{reflex path}
+preempts language-model inference on the \emph{parse path}, with an ordering rule that prevents a
+stale command from overriding a stop, and a three-layer validation chain. These are engineering,
+not claimed as novel: preemption of a slower path by a fast gate is prior art~\citep{mira}, and
+the decoding grammar is the companion paper's. We evaluate both paths against the budget, idle and
+under load, together with keyword-spotter error rates, recognition under rotor noise including the
+direction of the errors, and formation control of five simulated drones, and report every missed
+target.}
 
 Section~\ref{sec:related} reviews the closest work, Section~\ref{sec:methods} describes the system and
 the experimental setup, Section~\ref{sec:results} reports the measurements,
@@ -138,8 +171,8 @@ vocabulary~\citep{landau2017,contreras2020}. Language models replaced the fixed 
 generated plans and programs, checked by a human on the loop~\citep{chatgptrobotics2024} or
 grounded in a robot's skills~\citep{saycan2022}. Drone-specific agents make latency explicit:
 TypeFly streams a compact plan language from a remote GPT-4 and keeps response time below
-1.5~s~\citep{typefly2024}, and the agent of \citet{lim2025} prompts open models zero-shot on a local
-workstation GPU. \citet{silva2026} treat the model as an untrusted commander validated on a
+1.5~s~\citep{typefly2024}, and the agent of \citet{lim2025} prompts open models \deleted[id=AU]{zero-shot }on a local
+workstation GPU\chcomment[id=AU]{I-38}. \citet{silva2026} treat the model as an untrusted commander validated on a
 server, \citet{sikorski2025} run recognition offline beside a local model on a GPU-equipped
 computer, and \citet{torkamani2025} route between a model on a Jetson board and the cloud. For swarms, SwarmChat offers voice and text
 through rule-based intent matching~\citep{swarmchat2025}; \citet{iannoli2026} evaluate
@@ -235,21 +268,21 @@ built: formations were commanded to the controller directly (Section~\ref{sec:se
 
 The runtime consists of two paths that read the same audio stream and publish to the same command
 bus (Fig.~\ref{fig:architecture}). The \emph{parse path} is the general one: a voice-activity
-model (Silero VAD;~\citealp{silero}) segments the stream into utterances, \texttt{whisper.cpp} with the
-\texttt{tiny.en} model transcribes each one~\citep{whisper,whispercpp}, a fine-tuned Qwen2.5-0.5B
+\added[id=AU]{detection (VAD) }model (Silero VAD;~\citealp{silero})\chcomment[id=AU]{I-11} segments the stream into utterances, \texttt{whisper.cpp} with the
+\texttt{tiny.en} model transcribes each one\added[id=AU]{ with an initial prompt that lists the command vocabulary}~\citep{whisper,whispercpp},\chcomment[id=AU]{I-03} a fine-tuned Qwen2.5-0.5B
 quantised to \QF{}~\citep{qwen25} parses the transcript into a single-line JSON command under a
-bounded GBNF grammar served by \texttt{llama.cpp}~\citep{llamacpp}, and a semantic validator checks
+bounded \added[id=AU]{grammar in the }GBNF\added[id=AU]{ (GGML Backus--Naur form) formalism}\deleted[id=AU]{ grammar} served by \texttt{llama.cpp}~\citep{llamacpp}, and a semantic validator checks
 the result before it is published. The model, the grammar and the system prompt are taken unchanged
-from the companion paper, which selects the model by comparing candidates and quantisation levels on
-the same board and reports its exact match of 0.935 on reference transcripts~\citep{companion}. The
+from the companion paper, which selects the model by comparing candidates \replaced[id=AU]{on accuracy at two quantisation levels and on latency at \QF{} on}{and quantisation levels on
+} the same board\chcomment[id=AU]{I-27} and reports its exact match of 0.935 on reference transcripts~\citep{companion}. The
 \emph{reflex path} is a two-class keyword spotter that listens continuously and, on detecting
 \emph{swarm hold} or \emph{swarm abort}, publishes a fixed command without transcribing anything.
 
-The two paths share nothing between the audio buffer and the bus. They are not a fast and a slow
+The two paths share \replaced[id=AU]{no processing stage}{nothing} between the audio buffer and the bus.\chcomment[id=AU]{I-29} They are not a fast and a slow
 setting of one pipeline: the parse path cannot begin until the endpointer has confirmed the end of
 speech, and that wait alone exceeds the reflex budget. The reflex path skips only the stages that
 interpret speech; its commands still pass the validator and the state machine. Messages on the bus
-are single-line JSON datagrams over UDP, each carrying the command, a tag naming the producing path
+are single-line JSON datagrams over \added[id=AU]{the User Datagram Protocol (}UDP\added[id=AU]{)}, each carrying the command, a tag naming the producing path
 and a sequence number.
 
 \subsection{Preemption and ordering}
@@ -273,7 +306,7 @@ queued utterance reserves its number when it is dequeued, so after a hold it can
 
 \begin{table}
 \caption{Reflex-path membership rule applied to the ten intents. A command is admitted only if it
-passes both tests; a dash marks the first test, skipped after the second fails.}
+passes both tests; a dash marks \replaced[id=AU]{a latency test not applied because the fail-safe test has failed}{the first test, skipped after the second fails}.\AuditID{I-35}}
 \label{tab:membership}
 \footnotesize\setlength{\tabcolsep}{3pt}
 \begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}l>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{2.3cm}l@{}}
@@ -340,11 +373,11 @@ avoid it by resolving to \texttt{unknown} or a hold.
 \subsection{Latency budget and core allocation}
 \label{sec:budget}
 
-Every stage carries a target at the 95th percentile (p95), fixed before any measurement:
+Every stage carries a target at the 95th percentile (p95\added[id=AU]{; p50 and p99 denote the median and the 99th percentile}), fixed before any measurement\replaced[id=AU]{. The end-to-end target of 2,500~ms runs from the moment the endpointer declares the utterance over; the endpointing wait before it is budgeted separately at 500~ms. After that moment, speech recognition is allowed 1,200~ms, language-model prefill 250~ms (assuming a cached prompt prefix), decode 1,100~ms, and validation and dispatch 50~ms. These allowances are ceilings that sum to 2,600~ms, so the end-to-end target is judged on the measured end-to-end figure, not on the sum of stage figures.}{:
 endpointing wait 500~ms, speech recognition 1,200~ms, language-model prefill 250~ms (assuming a cached
 prompt prefix), decode 1,100~ms, and validation and dispatch 50~ms, with 2,500~ms end to end from
-the end of speech. The reflex path is budgeted at 150~ms from the keyword offset, the end of the
-spoken phrase, which isolates what the system adds: the spotter's decision delay, the quantisation of
+the end of speech.}\chcomment[id=AU]{X-01} The reflex path is budgeted at 150~ms from the keyword offset, the end of the
+spoken phrase\added[id=AU]{ (and 850~ms from its onset, the delay the operator perceives)},\chcomment[id=AU]{I-12} which isolates what the system adds: the spotter's decision delay, the quantisation of
 audio into 80~ms frames, computation and publication. Preemption recovery is budgeted at 300~ms.
 The Pi~5's four Cortex-A76 cores are divided between the paths. Core~0 runs the audio frame loop,
 which feeds each frame to the keyword spotter and the endpointer and must finish every frame within
@@ -373,7 +406,7 @@ second fit before its test split was scored.
 The controller returns one acceleration per vehicle every 20~ms (50~Hz) and implements three
 formations: a circle, a line and a wedge. Vehicles are assigned to slots once, when the formation is
 commanded, by minimising the total squared distance~\citep{turpin2014}. The acceleration sums a
-PID law on the slot error ($k_p = 2.0$, $k_i = 0.05$, $k_d = 3.0$, integral limited to $\pm 2.0$), an
+\added[id=AU]{proportional--integral--derivative (}PID\added[id=AU]{)} law on the slot error ($k_p = 2.0$, $k_i = 0.05$, $k_d = 3.0$, integral limited to $\pm 2.0$), an
 artificial potential field that repels pairs closer than 1.5~m~\citep{khatib1986}, and global
 flock-centring and velocity-matching terms weighted at 0.15 and 0.25~\citep{reynolds1987}. Because a
 force can be outrun at a finite timestep, a geometric clamp after the integrator moves every pair
@@ -388,15 +421,15 @@ backend~\citep{pyflyt}, which is exercised by smoke tests only and applies no cl
 
 \paragraph{Platform and thermal state.} All wall-clock measurements were made on a Raspberry Pi~5
 with 8~GB of memory, an active cooler, the \texttt{performance} governor and the core allocation of
-Section~\ref{sec:budget}. During the latency experiment the processor stayed at 50.5--77.9~$^\circ$C
+Section~\ref{sec:budget}. During the latency experiment the processor\added[id=AU]{, sampled at the start of each trial,} stayed at 50.5--77.9~$^\circ$C\chcomment[id=AU]{I-18}
 and the throttle flag was clear on all 360 trials. Audio was replayed from recordings, not captured
 from a microphone: in real time through the frame loop in the latency experiment, and faster than
 real time in the acoustic-robustness experiment. The bus ran over the loopback interface
 with the consumer and state machine on the board.
 
 \paragraph{Latency experiment.} The parse path was timed on the 200 utterances of the golden test
-set, recorded by the first author and described in the companion paper~\citep{companion}, which the
-endpointer split into 226 segments; each segment is one latency sample. The reflex path was timed on
+set, recorded by the first author and described in the companion paper~\citep{companion}\replaced[id=AU]{; the endpointer split them into 226 segments, and each}{, which the
+endpointer split into 226 segments; each} segment is one latency sample.\chcomment[id=AU]{I-14} The reflex path was timed on
 40 recorded keyword takes by the first author, 20 per class, each replayed twice in two conditions,
 80 trials per condition. In the \emph{idle} condition the parse path was resident but idle; in the
 \emph{loaded} condition a load thread on cores 1--3 ran the deployed parser back to back on
@@ -419,12 +452,12 @@ segments counts as recognised only if every command it dispatched is correct. Ex
 the reference transcript of the same items gives the parser's own accuracy, so EM minus CRR is the
 accuracy the speech stage costs. Word error rate (WER) and the safe-failure rate (the share of failed
 utterances resolving to \texttt{unknown} or a hold) are reported per condition. Intervals are 95\%
-bootstrap intervals over utterances. Across conditions we report a one-way ANOVA on the
-arcsine-transformed CRR with Tukey's comparison~\citep{kramer1956}, Cochran's
+bootstrap intervals over utterances. Across conditions we report a one-way \added[id=AU]{analysis of variance (}ANOVA\added[id=AU]{)} on the
+arcsine-transformed CRR with \replaced[id=AU]{the Tukey--Kramer}{Tukey's} comparison~\citep{kramer1956},\chcomment[id=AU]{I-39} Cochran's
 $Q$~\citep{cochran1950}, and pairwise McNemar tests~\citep{mcnemar1947} (exact below 25 discordant
-pairs, continuity-corrected~\citep{edwards1948} above) at a Bonferroni-corrected~\citep{dunn1961}
+pairs, continuity-corrected~\citep{edwards1948} \replaced[id=AU]{from 25 upwards}{above})\chcomment[id=AU]{X-03} at a Bonferroni-corrected~\citep{dunn1961}
 $\alpha = 0.0050$. The 200 utterances are paraphrases of 12 command patterns, so intervals and
-$p$-values are optimistic.
+$p$-values are optimistic.\added[id=AU]{ The processor stayed at 54.3--80.1~$^\circ$C; its soft temperature-limit flag was set during the 5~dB condition, which affects timing, not accuracy.}\chcomment[id=AU]{I-17}
 
 \paragraph{Formation-control experiment.} Formations were commanded to the controller directly,
 not spoken, so that control quality is measured apart from recognition. Five vehicles formed a circle
@@ -445,9 +478,9 @@ comparison.
 \begin{table}
 \caption{Latency budget against measurement on the cooled Raspberry Pi~5 (ms, nearest-rank
 percentiles). Parse-path rows count endpointed segments; prefill is the deployed parser's, without a
-prompt cache, whereas its target assumes a cached prefix.}
+prompt cache, whereas its target assumes a cached prefix.\added[id=AU]{ Reflex rows count detections (78 of 80 trials per condition); recovery is measured in the loaded condition.}\AuditID{I-33}}
 \label{tab:latency}
-\footnotesize\setlength{\tabcolsep}{2.5pt}
+\footnotesize\setlength{\tabcolsep}{2pt}
 \begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lrrrrl@{}}
 \toprule
 Stage & $n$ & p50 & p95 & Target & Verdict \\
@@ -457,7 +490,7 @@ Speech recognition & 226 & 1,246 & 1,449 & 1,200 & missed \\
 Prefill (no cache) & 226 & 570 & 751 & 250 & missed \\
 Decode & 226 & 561 & 915 & 1,100 & met \\
 Validation and dispatch & 226 & $<1$ & $<1$ & 50 & met \\
-\textbf{End to end, from end of speech} & 226 & 2,441 & 3,122 & 2,500 & missed \\
+\textbf{End to end, \replaced[id=AU]{after endpointing}{from end of speech}}\AuditID{X-01} & 226 & 2,441 & 3,122 & 2,500 & missed \\
 \midrule
 \textbf{Reflex from offset, idle} & 78 & 195 & 545 & 150 & missed \\
 \quad spotter delay + frames & 78 & 190 & 540 & -- & \\
@@ -481,8 +514,8 @@ percentiles do not add. Dashed lines: p95 budgets.}
 \label{fig:latency}
 \end{figure}
 
-The parse path missed its budget (Table~\ref{tab:latency}): its p95 from the end of speech was
-3,122~ms over 226 segments, 622~ms (25\%) above 2,500~ms, and 3,602~ms with the endpointing wait
+The parse path missed its budget (Table~\ref{tab:latency}): its p95 from the \replaced[id=AU]{endpointer's end-of-utterance decision}{end of speech} was
+3,122~ms\chcomment[id=AU]{X-01} over 226 segments, 622~ms (25\%) above 2,500~ms, and 3,602~ms with the endpointing wait
 included. Two stages missed their allowances: speech recognition at 1,449~ms against 1,200~ms, and
 prefill at 751~ms against 250~ms, measured without a prompt cache. Decode met its allowance at
 915~ms, as did the endpointing wait (480~ms) and validation with dispatch (under 1~ms). Prefill and
@@ -500,13 +533,13 @@ conditions, and the board's computation and publication for 6~ms idle and 18~ms 
 (Table~\ref{tab:latency}; Fig.~\ref{fig:latency}b). The offset anchor is an energy-based estimate,
 and on 6 of 78 idle and 4 of 78 loaded takes the command was published before it, by up to 235~ms.
 Under load no frame exceeded the 80~ms period: the frame loop's computation was 14.2~ms at the
-median, 22.9~ms at p99 and 45.5~ms at most. From the keyword onset the reflex path took 1,265~ms idle
+median, 22.9~ms at p99 and 45.5~ms at most.\added[id=AU]{ While speech recognition ran, the longest frame took 74.2~ms.}\chcomment[id=AU]{I-25} From the keyword onset the reflex path took 1,265~ms idle
 and 1,266~ms loaded at p95, against an 850~ms target.
 
 Of the 80 loaded trials, 78 produced a detection, and each of the 78 found a parse-path decode in
 progress and cancelled it; no cancelled decode completed, so the ordering rule was never exercised
-by a trial and is verified by the consumer's unit tests. In both conditions all 40 abort takes fired
-the abort class and 38 of 40 hold takes fired the hold class, the two misses being one take on both
+by a trial and is verified by the consumer's unit tests. In both conditions all 40 abort \replaced[id=AU]{trials}{takes} fired
+the abort class and 38 of 40 hold \replaced[id=AU]{trials}{takes} fired the hold class,\chcomment[id=AU]{I-19} the two misses being one take on both
 replays; no take fired the other class. While listening to the 200 golden utterances, the reflex path
 fired once, a \texttt{hover} during a landing command; the offline scoring of the same recordings
 (Section~\ref{sec:res-kws}) produced no false accept, and the records do not explain the difference.
@@ -522,7 +555,7 @@ budget at 1,195~ms (p95; median 601~ms; maximum 1,505~ms) against 300~ms. The ca
 \caption{Keyword-spotter operating curve on the held-out test split: false-reject rate on 300
 synthetic takes per class against false accepts per hour on 0.429~h of ambient speech (both classes
 together), as the common threshold sweeps the selection grid. Open circles: operating threshold
-0.999; shaded band: 95\% Poisson interval of its false-accept rate; dashed and dotted lines: targets.}
+0.999; shaded band: 95\% Poisson interval of its false-accept rate; dashed and dotted lines: targets.\added[id=AU]{ The false-reject criterion is judged on the author's recorded takes (Section~\ref{sec:res-kws}), not on these synthetic takes.}\AuditID{I-08}}
 \label{fig:kws}
 \end{figure}
 
@@ -530,7 +563,7 @@ At the operating threshold of 0.999 (Fig.~\ref{fig:kws}), the ambient-speech tes
 one false accept in 0.429~h, 2.33 per hour with a 95\% interval of [0.06, 12.98], against a target of
 at most one per hour; the criterion is not demonstrated. The validation stream (0.167~h) and the
 golden-set recordings (0.304~h) produced none. A stress stream of authored near-miss phrases produced
-34 false accepts in 0.100~h, 31 of them on the hold head. On the synthetic test takes, the
+34 false accepts in 0.100~h, 31 of them on the hold head\added[id=AU]{; it is a stress condition, not an operating rate, and no criterion is judged on it}.\chcomment[id=AU]{I-07} On the synthetic test takes\added[id=AU]{, rendered by the three voices used in training,} the
 false-reject rate was 0.027 for hold and 0.007 for abort; on the author's 40 recorded takes it was
 0.050 [0.001, 0.249] for hold and 0.000 [0.000, 0.168] for abort, against a target of at most 0.10,
 so this criterion is not demonstrated either. Measured from the synthetic takes' own anchor, the
@@ -571,7 +604,7 @@ target of 0.80 and the 10~dB target of 0.65.}
 In clean audio the CRR was 0.690 [0.625, 0.750] against a target of at least 0.80
 (Table~\ref{tab:acoustic}); the parser alone reached an EM of 0.935 on the same items, so the speech
 stage cost 0.245. Each of the 62 clean failures was assigned one cause in a fixed order: endpointer
-splits accounted for 22 (23 of the 200 utterances, 11.5\%, were split at a pause, and all 23 failed),
+splits accounted for 22 (23 of the 200 utterances, 11.5\%, were split at a pause\deleted[id=AU]{,} and all 23 failed\added[id=AU]{; one is counted under the parser-error cause, which is assigned first}),\chcomment[id=AU]{I-04}
 recognition errors that left the intent right but a slot wrong for 23, recognition errors that changed
 the intent for 5, and parser errors already present on the reference text for 12. Scored on the last
 segment of each utterance only, the clean CRR was 0.730. At 10~dB the CRR was 0.590 [0.520, 0.660]
@@ -580,7 +613,7 @@ rose from 5 to 19 and those that corrupted a slot from 23 to 30, while parser er
 The CRR reached 0.80 at no level and held at 0.65 or above down to 15~dB on the point estimate.
 
 The ANOVA rejected equality across the five conditions ($F(4, 995) = 6.03$, $p = 8.6 \times
-10^{-5}$), and Tukey's comparison separated 5~dB from clean, 20 and 15~dB. Cochran's $Q$ also
+10^{-5}$), and Tukey's comparison separated 5~dB from clean, 20 and 15~dB.\added[id=AU]{ The five conditions reuse the same 200 utterances, so the paired tests below are the primary analysis.}\chcomment[id=AU]{I-24} Cochran's $Q$ also
 rejected equality ($Q = 61.05$, 4 degrees of freedom, $p = 1.7 \times 10^{-12}$), and the pairwise
 McNemar tests separated clean audio from 10 and 5~dB, and 20 and 15~dB from 5~dB. The safe-failure
 rate lay between 0.014 and 0.039 at every level, against a target of at least 0.70: failures grew
@@ -597,7 +630,7 @@ workstation to 0.485 on the board; the board's figures are reported.
 \includegraphics[width=0.85\textwidth]{figures/fig_trajectories.pdf}
 \caption{Trajectories of the five simulated vehicles in one trial of each formation on the kinematic
 backend: start (open circle), position at 60~s (filled circle), assigned slot (cross) and the 0.5~m
-formation-accuracy tolerance (dotted circle).}
+formation-accuracy tolerance (dotted circle).\added[id=AU]{ Trial 1 (seed 42) of each formation; colours identify vehicles.}\AuditID{I-10}}
 \label{fig:trajectories}
 \end{figure*}
 
@@ -605,11 +638,11 @@ formation-accuracy tolerance (dotted circle).}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_formation_boxes.pdf}
 \caption{Convergence time (left, simulated seconds) and separation-clamp interventions per trial
-(right) over 50 trials of each formation on the kinematic backend.}
+(right) over 50 trials of each formation on the kinematic backend.\added[id=AU]{ Boxes: interquartile range; line: median; whiskers: 1.5 times the interquartile range; circles: outliers.}\AuditID{I-37}}
 \label{fig:boxes}
 \end{figure}
 
-All 150 trials converged (Fig.~\ref{fig:trajectories}), the slowest after 4.32~s, and formation
+All 150 trials converged (Fig.~\ref{fig:trajectories}\added[id=AU]{ shows one trial of each formation}),\chcomment[id=AU]{I-30} the slowest after 4.32~s, and formation
 accuracy was 1.000 in every trial. Median convergence time was 4.06~s for the circle (interquartile
 range 4.00--4.08~s), 3.26~s for the line (3.21--3.32~s) and 2.30~s for the wedge (2.21--2.38~s)
 (Fig.~\ref{fig:boxes}). The ANOVA rejected equality ($F(2, 147) = 3500.7$,
@@ -627,7 +660,7 @@ of those 144 trials, and 0.82--0.89~m in the other six.
 
 \begin{table}
 \caption{Every requirement of the system other than the safe-failure target, which is defined in
-the companion paper and reported in Section~\ref{sec:res-acoustic}, with its measured result. ``Not demonstrated'': the 95\%
+the companion paper and reported in Section~\ref{sec:res-acoustic}, with its measured result. \replaced[id=AU]{``Not dem.'' (not demonstrated)}{``Not demonstrated''}: the 95\%
 interval straddles the target. ``Not run'': requires an end-to-end run with networking disabled,
 which was not performed.}
 \label{tab:summary}
@@ -640,7 +673,7 @@ Reflex path preempts the parse path & 78/78 decodes cancelled; 0 cross-triggers 
 Formation control, five drones & 150/150 trials converged & met \\
 Two simulation backends & Smoke tests pass, same gains & met \\
 Flight state machine & Every legality case tested & met \\
-Per-stage attribution & All five stages, p50/p95/p99 & met \\
+Per-stage attribution & All five stages, \replaced[id=AU]{p50 and p95}{p50/p95/p99}\AuditID{I-09} & met \\
 Collisions & 0 in 150 trials (clamp) & met \\
 Formation accuracy $\geq 0.85$ & 1.000 in every trial & met \\
 Reflex latency $\leq 150$~ms & 545 idle, 547 loaded & missed \\
@@ -649,7 +682,7 @@ Recovery $\leq 300$~ms & 1,195 & missed \\
 Clean CRR $\geq 0.80$ & 0.690 & missed \\
 CRR at 10~dB $\geq 0.65$ & 0.590 & missed \\
 Keyword false accepts $\leq 1$/h & 2.33 [0.06, 12.98] & not dem. \\
-Keyword false rejects $\leq 0.10$ & hold 0.050, abort 0.000 & not dem. \\
+Keyword false rejects $\leq 0.10$ & hold 0.050\added[id=AU]{ [0.001, 0.249]}, abort 0.000\added[id=AU]{ [0.000, 0.168]}\AuditID{I-34} & not dem. \\
 Offline speech recognition & -- & not run \\
 Offline operation & -- & not run \\
 Live demonstration & -- & not performed \\
@@ -667,7 +700,7 @@ safe-failure target, defined in the companion paper, is also missed at every noi
 
 \paragraph{The reflex path: design held, budget missed.} The behaviour the dual-path design exists
 for was observed without exception: every trigger that met a decode cancelled it, the two classes
-were never confused, and loading the language model added 12~ms at p95 to the board's share of the
+were never confused\added[id=AU]{ on the recorded takes},\chcomment[id=AU]{I-22} and loading the language model added 12~ms at p95 to the board's share of the
 reflex latency without delaying any audio frame. The 150~ms budget was nevertheless missed by a wide margin,
 and the measurement locates the miss in the 540~ms before publication that the spotter's decision
 delay, the 80~ms frame quantisation and the imprecision of the offset anchor share, not in the
@@ -687,7 +720,7 @@ is exactly the one measured in the companion paper, whose timing with a cached p
 p95 of 328.8~ms on the same board~\citep{companion}. Whether caching changes the decoded commands was
 not tested, so enabling it requires a parity check. Speech recognition exceeded its allowance by
 249~ms; an optimised acoustic model or a streaming encoder could reduce it, at a possible cost in
-accuracy that would have to be selected on a held-out recording set rather than on the golden set,
+accuracy\replaced[id=AU]{; such a change would have to be selected}{ that would have to be selected} on a held-out recording set\chcomment[id=AU]{I-13} rather than on the golden set,
 which is the test set.
 
 \paragraph{Errors do not become safer under noise.} Noise added failures, and nearly all of the
@@ -705,18 +738,18 @@ system.
 follows from the clamp, not from the potential field: the field alone let pairs inside 0.80~m 432
 times, in 144 of 150 trials, and in every trial in which the clamp intervened the closest approach
 equals the clamp distance. A real
-airframe exposes no state to rewrite, so on hardware the same guarantee would have to act through
+airframe exposes no state to rewrite, so on hardware the same \replaced[id=AU]{mechanism}{guarantee} would have to act\chcomment[id=AU]{I-26} through
 commanded accelerations or thrust. Formation accuracy is saturated by the protocol and does not
 discriminate between the formations; convergence time does.
 
 \paragraph{Comparison by design.} The nearest local baseline, the agent of \citet{lim2025}, prompts
-open models of the same families zero-shot on a workstation GPU, accepts typed text, flies one vehicle,
+open models of the same families \deleted[id=AU]{zero-shot }on a workstation GPU\chcomment[id=AU]{I-38}, accepts typed text, flies one vehicle,
 relies on a human to switch to position mode as its fallback, and reports no latency. Our system takes
 speech on a CPU-only board, fine-tunes and constrains its model, commands five vehicles, and carries
 its stop in software under a measured budget. The two are therefore compared by design rather than by
 measurement. CommandSwarm~\citep{commandswarm2026} shares our use of deterministic gates, and
 SkySim~\citep{skysim2026} our hold on rejection; neither reports running on a single-board computer,
-and neither separates its stop from the interpreting path.
+and neither separates its stop from the interpreting path.\added[id=AU]{ MIRA's gate aborts at a median of 466~ms from speech onset~\citep{mira}; our reflex path took 965~ms at the median from keyword onset. What it adds over that gate is therefore not speed but a trigger restricted to two commands by a derived rule, and a budget against which its latency is located.}\chcomment[id=AU]{I-02}
 
 \paragraph{Limitations.} The formation results come from a kinematic simulator without rotor
 dynamics, wind or downwash; the rigid-body backend was exercised by smoke tests only, at an effective
@@ -729,7 +762,7 @@ operation was not verified by a run with networking disabled, and the live demon
 performed. Formation commands carry no speed, so the validator's 2.0~m/s ceiling does not apply to
 formation changes, while the backends allow 3~m/s; vehicle speeds were not recorded. Preemption does
 not reach utterances queued behind the one in progress, nor a trigger that arrives during
-transcription, and no reflex trial overlapped speech recognition. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
+transcription, and no reflex trial overlapped speech recognition. \added[id=AU]{The state machine judges legality on a command's intent before the validator substitutes a hold, so an unvalidated command could dispatch a hold in a state where a hold is illegal; on the deployed route validation comes first, so the case does not arise there. }\chcomment[id=AU]{I-05}Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
 to decide either keyword criterion.
 
 % =============================================================================
@@ -739,7 +772,7 @@ to decide either keyword criterion.
 A dual-path voice interface for a swarm of five simulated drones can run its speech and language
 stages on a Raspberry Pi~5, on recorded audio, with a fine-tuned small language model, and a
 keyword-spotter reflex path can preempt that model: every trigger during inference cancelled the
-decode, and the board added only 6--18~ms to the stop, although neither keyword-spotter error
+decode, and the board added only 6--18~ms \replaced[id=AU]{before the stop was published on the bus}{to the stop},\chcomment[id=AU]{I-23} although neither keyword-spotter error
 criterion is demonstrated and recovery after preemption missed its budget.
 A two-test membership rule restricts the reflex path to a hold and an abort, and three validation
 layers bound what a wrong command can do. The system misses its latency budgets on both paths, before the board's share on the reflex path
@@ -764,14 +797,14 @@ relationships that could have appeared to influence the work reported in this pa
 \section*{Data availability}
 The runtime, the swarm controller and simulation backends, the keyword-spotter training and
 evaluation scripts, the golden-set and keyword recordings, the raw records of every experiment and
-the scripts that produce every table and figure in this article are publicly available at
+the scripts that produce every table and figure in this article\added[id=AU]{ except Fig.~\ref{fig:trajectories}, which is distributed as rendered,} are publicly available\chcomment[id=AU]{I-10} at
 \url{https://github.com/TayebKahia/voice-swarm-edge-}. The deployed language-model artefact is
 distributed through the repository's releases.
 
 \section*{Declaration of generative AI and AI-assisted technologies in the writing process}
-During the preparation of this work the authors used Claude (Anthropic) for writing assistance.
-After using this tool, the authors reviewed and edited the content as needed and take full
-responsibility for the content of the publication.
+During the preparation of this work the authors used Claude (Anthropic) \replaced[id=AU]{in order to assist with the writing of the manuscript}{for writing assistance}.\chcomment[id=AU]{X-02}
+\replaced[id=AU]{The authors reviewed the content and take full responsibility for the publication.}{After using this tool, the authors reviewed and edited the content as needed and take full
+responsibility for the content of the publication.}
 
 \bibliographystyle{cas-model2-names}
 \bibliography{references}
