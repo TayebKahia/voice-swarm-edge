@@ -190,3 +190,4 @@ train/wake_features/
 # which holds only measured experiments; the video is archived by hand.
 # ---------------------------------------------------------------------
 demo_runs/
+*.abs
