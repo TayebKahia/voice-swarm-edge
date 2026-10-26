@@ -41,9 +41,9 @@ from typing import Sequence
 import numpy as np
 from scipy.stats import binomtest, chi2
 
-__all__ = ["nearest_rank", "bootstrap_ratio_ci", "mcnemar", "bonferroni_alpha",
-           "McNemarResult", "BOOTSTRAP_RESAMPLES", "BOOTSTRAP_SEED",
-           "EXACT_BELOW_DISCORDANT"]
+__all__ = ["nearest_rank", "order_statistic_ci", "bootstrap_ratio_ci",
+           "cluster_bootstrap_ci", "mcnemar", "bonferroni_alpha", "McNemarResult",
+           "BOOTSTRAP_RESAMPLES", "BOOTSTRAP_SEED", "EXACT_BELOW_DISCORDANT"]
 
 #: Replicates. 10,000 puts the Monte-Carlo error on a 95% bound at well under a
 #: tenth of a percentage point, which is finer than any WER difference reported.
@@ -63,6 +63,33 @@ def nearest_rank(samples: Sequence[float], percentile: float) -> float:
         return float("nan")
     rank = math.ceil(percentile / 100.0 * len(ordered))
     return ordered[max(1, min(rank, len(ordered))) - 1]
+
+
+def order_statistic_ci(samples: Sequence[float], percentile: float, *,
+                       confidence: float = 95.0) -> tuple[float, float]:
+    """Distribution-free interval for a percentile, bounded by two observed samples.
+
+    The number of samples at or below the true percentile is Binomial(n, p/100), so the
+    l-th and u-th smallest samples bracket it with probability at least `confidence`
+    when l and u are the binomial quantiles below. No distribution is assumed, which
+    matters for latencies with a cache-hit / cache-miss mixture.
+
+    A bound the sample cannot support is returned as infinite rather than clipped to
+    the minimum or maximum: with 60 trials no observed value bounds a p95 from above,
+    and reporting the maximum would claim a precision the run does not have.
+    """
+    from scipy.stats import binom
+
+    ordered = sorted(samples)
+    n = len(ordered)
+    if n == 0:
+        return float("nan"), float("nan")
+    q, tail = percentile / 100.0, (1.0 - confidence / 100.0) / 2.0
+    low_rank = int(binom.ppf(tail, n, q))                # P(X < low_rank) <= tail
+    high_rank = int(binom.ppf(1.0 - tail, n, q)) + 1     # P(X >= high_rank) <= tail
+    low = ordered[low_rank - 1] if low_rank >= 1 else float("-inf")
+    high = ordered[high_rank - 1] if high_rank <= n else float("inf")
+    return low, high
 
 
 def bootstrap_ratio_ci(
@@ -97,6 +124,35 @@ def bootstrap_ratio_ci(
     picks = rng.integers(0, errors.size, size=(resamples, errors.size))
     replicates = errors[picks].sum(axis=1) / words[picks].sum(axis=1)
 
+    tail = (100.0 - confidence) / 2.0
+    return nearest_rank(replicates, tail), nearest_rank(replicates, 100.0 - tail)
+
+
+def cluster_bootstrap_ci(
+    clusters: Sequence[tuple[float, float]],
+    *,
+    confidence: float = 95.0,
+    resamples: int = BOOTSTRAP_RESAMPLES,
+    seed: int = BOOTSTRAP_SEED,
+) -> tuple[float, float]:
+    """Percentile bootstrap CI for a pooled ratio, resampling whole clusters.
+
+    Each cluster is `(numerator sum, denominator sum)`: for exact match on the golden
+    set, the correct count and the item count of one template family. Items of one
+    family are paraphrases of one pattern and fail together, so resampling them one
+    by one treats 200 correlated items as independent and narrows the interval. The
+    cluster is the unit that was actually sampled.
+
+    With few clusters the interval is itself rough --- 12 families is a small sample
+    of patterns --- so it is reported beside the item-level one, not instead of the
+    caveat. Returns `(nan, nan)` for fewer than two clusters.
+    """
+    sums = np.asarray(clusters, dtype=float)
+    if sums.ndim != 2 or sums.shape[0] < 2:
+        return float("nan"), float("nan")
+    rng = np.random.default_rng(seed)
+    picks = rng.integers(0, sums.shape[0], size=(resamples, sums.shape[0]))
+    replicates = sums[picks, 0].sum(axis=1) / sums[picks, 1].sum(axis=1)
     tail = (100.0 - confidence) / 2.0
     return nearest_rank(replicates, tail), nearest_rank(replicates, 100.0 - tail)
 

@@ -11,7 +11,8 @@ from __future__ import annotations
 import pytest
 
 from eval.stats import (EXACT_BELOW_DISCORDANT, bonferroni_alpha,
-                        bootstrap_ratio_ci, mcnemar, nearest_rank)
+                        bootstrap_ratio_ci, cluster_bootstrap_ci, mcnemar, nearest_rank,
+                        order_statistic_ci)
 
 
 class TestNearestRank:
@@ -40,6 +41,48 @@ class TestNearestRank:
         samples = [3, 1, 2]
         nearest_rank(samples, 50)
         assert samples == [3, 1, 2]
+
+
+class TestOrderStatisticCi:
+    def test_median_of_100_uses_the_textbook_ranks(self):
+        # The 95% interval for a median of 100 is the 40th to the 61st smallest value.
+        samples = list(range(1, 101))
+        assert order_statistic_ci(samples, 50) == (40, 61)
+
+    def test_bounds_are_observed_samples(self):
+        samples = [float(x) * 1.7 for x in range(226)]
+        low, high = order_statistic_ci(samples, 95)
+        assert low in samples and high in samples and low <= nearest_rank(samples, 95) <= high
+
+    def test_an_unsupported_upper_bound_is_infinite_not_the_maximum(self):
+        # Sixty trials cannot bound a p95 from above.
+        low, high = order_statistic_ci(list(range(60)), 95)
+        assert high == float("inf") and low < nearest_rank(list(range(60)), 95)
+
+    def test_empty_is_nan(self):
+        low, high = order_statistic_ci([], 95)
+        assert low != low and high != high
+
+
+class TestClusterBootstrapCi:
+    def test_identical_clusters_give_a_point(self):
+        assert cluster_bootstrap_ci([(9.0, 10.0)] * 12) == pytest.approx((0.9, 0.9))
+
+    def test_wider_than_the_item_level_interval_when_failures_cluster(self):
+        # Twelve families of ten items; every error sits in one family.
+        clusters = [(10.0, 10.0)] * 11 + [(0.0, 10.0)]
+        items = [1.0] * 110 + [0.0] * 10
+        c_low, c_high = cluster_bootstrap_ci(clusters)
+        i_low, i_high = bootstrap_ratio_ci(items, [1.0] * len(items))
+        assert c_high - c_low > i_high - i_low
+
+    def test_one_cluster_is_nan(self):
+        low, high = cluster_bootstrap_ci([(3.0, 4.0)])
+        assert low != low and high != high
+
+    def test_reproducible(self):
+        clusters = [(float(i % 4), 4.0) for i in range(12)]
+        assert cluster_bootstrap_ci(clusters) == cluster_bootstrap_ci(clusters)
 
 
 class TestBootstrapRatioCi:
