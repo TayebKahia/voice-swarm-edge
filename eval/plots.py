@@ -482,47 +482,61 @@ def golden_em_by_precision() -> dict[str, dict[str, float]]:
     return em
 
 
+def _golden_em_with_intervals() -> dict[str, dict[str, tuple[float, float, float]]]:
+    """model -> precision -> (EM, low, high) on `test_golden`, the interval resampling the 12
+    template families whole (`eval.error_families`), as in the article's Table 1."""
+    from eval.error_families import _clusters, families
+    from eval.mcnemar import _quiet_validate_logging, load_correct, load_reference
+    from eval.stats import cluster_bootstrap_ci
+
+    _quiet_validate_logging()
+    fams = families()
+    out: dict[str, dict[str, tuple[float, float, float]]] = {m: {} for m in ARTICLE_MODELS}
+    for model in ARTICLE_MODELS:
+        sources = {"fp16": load_reference(model, SPLIT)}
+        if model != "h2o-danube3-500m-chat":
+            sources |= {q: load_correct(model, q, SPLIT) for q in ("Q8_0", "Q4_K_M")}
+        for precision, correct in sources.items():
+            low, high = cluster_bootstrap_ci(_clusters(correct, fams))
+            out[model][precision] = (sum(correct.values()) / len(correct), low, high)
+    return out
+
+
 def article_em_bars() -> Path:
-    em = golden_em_by_precision()
+    """Golden-set exact match per model and precision, as points with pattern-level 95%
+    intervals: the article reads its comparisons off these intervals, which bars hid."""
+    em = _golden_em_with_intervals()
     with plt.rc_context(ARTICLE_RC):
         figure, axes = plt.subplots(figsize=(COLUMN_IN, 2.3))
-        width = 0.26
+        width = 0.24
         for index, model in enumerate(ARTICLE_MODELS):
             present = [p for p in PRECISION_RAMP if p in em[model]]
             offsets = [(k - (len(present) - 1) / 2) * width for k in range(len(present))]
             for offset, precision in zip(offsets, present):
-                value = em[model][precision]
+                value, low, high = em[model][precision]
                 control = model == "h2o-danube3-500m-chat"
-                axes.bar(index + offset, value, width=width * 0.92,
-                         color="white" if control else PRECISION_RAMP[precision],
-                         edgecolor=PRECISION_RAMP["Q8_0"] if control else "white",
-                         hatch="////" if control else None, linewidth=0.6, zorder=3)
-                _bar_label(axes, index + offset, value, f"{value:.3f}",
-                           dark=control or precision == "fp16")
-        #: The family contrast is fp16 against fp16, Qwen against the control.
-        qwen_fp16 = 1 - width
-        control_fp16 = 2.0
-        top = 1.0
-        axes.plot([qwen_fp16, qwen_fp16, control_fp16, control_fp16],
-                  [em["qwen2.5-0.5b-instruct"]["fp16"] + 0.02, top, top,
-                   em["h2o-danube3-500m-chat"]["fp16"] + 0.02],
-                  color=INK, linewidth=0.6)
-        axes.text((qwen_fp16 + control_fp16) / 2, top + 0.008,
-                  "fp16 vs fp16: 6.5 pp, exact McNemar p = 0.0023",
-                  ha="center", va="bottom", fontsize=5.8, color="0.15")
+                colour = PRECISION_RAMP["Q8_0"] if control else PRECISION_RAMP[precision]
+                axes.plot([index + offset] * 2, [low, high], color=colour, linewidth=1.0,
+                          zorder=3)
+                axes.plot(index + offset, value, marker="s" if control else "o", markersize=4,
+                          markerfacecolor="white" if control else colour,
+                          markeredgecolor=colour, markeredgewidth=1.0, zorder=4,
+                          linestyle="none")
         axes.set_xticks(range(len(ARTICLE_MODELS)))
         axes.set_xticklabels([SHORT[m] for m in ARTICLE_MODELS])
-        axes.set_ylim(0, 1.08)
-        axes.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        axes.set_xlim(-0.5, len(ARTICLE_MODELS) - 0.5)
+        axes.set_ylim(0.6, 1.01)
+        axes.set_yticks([0.6, 0.7, 0.8, 0.9, 1.0])
         axes.set_ylabel("Exact match, golden test set (n = 200)")
-        handles = [plt.Rectangle((0, 0), 1, 1, color=PRECISION_RAMP[p], label=label)
+        handles = [plt.Line2D([], [], marker="o", linestyle="-", color=PRECISION_RAMP[p],
+                              markersize=4, linewidth=1.0, label=label)
                    for p, label in (("fp16", "fp16 (reference)"), ("Q8_0", "Q8_0"),
                                     ("Q4_K_M", "Q4_K_M"))]
-        handles.append(plt.Rectangle((0, 0), 1, 1, facecolor="white", hatch="////",
-                                     edgecolor=PRECISION_RAMP["Q8_0"], linewidth=0.6,
-                                     label="fp16, family control"))
+        handles.append(plt.Line2D([], [], marker="s", linestyle="-",
+                                  color=PRECISION_RAMP["Q8_0"], markerfacecolor="white",
+                                  markersize=4, linewidth=1.0, label="fp16, family control"))
         axes.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.2),
-                    ncol=4, frameon=False, handlelength=1.2, columnspacing=0.9)
+                    ncol=4, frameon=False, handlelength=1.6, columnspacing=0.9)
         _article_axes(axes)
         return _save_article(figure, "fig_em_bars")
 
@@ -675,16 +689,13 @@ def article_pareto() -> Path:
                           ha="right" if above else "center", va="center" if above else "top",
                           fontsize=5.8, color="0.15")
         axes.axvline(SLM_BUDGET_MS, color=INK, linewidth=0.8, linestyle="-", zorder=2)
-        axes.axvline(NFR2_MS, color=INK, linewidth=0.8, linestyle="--", zorder=2)
         axes.axhline(NFR4_EM, color=INK, linewidth=0.8, linestyle=":", zorder=2)
         top = blended_transform_factory(axes.transData, axes.transAxes)
         axes.text(SLM_BUDGET_MS, 1.01, "stage allowance\n1,350 ms", transform=top,
                   ha="center", va="bottom", fontsize=5.8, color="0.15")
-        axes.text(NFR2_MS, 1.01, "end-to-end budget\n2,500 ms", transform=top,
-                  ha="center", va="bottom", fontsize=5.8, color="0.15")
         axes.text(60, NFR4_EM + 0.004, "EM threshold 0.85", ha="left", va="bottom",
                   fontsize=5.8, color="0.15")
-        axes.set_xlim(0, 2900)
+        axes.set_xlim(0, 2600)
         axes.set_ylim(0.66, 0.98)
         axes.set_xlabel("Language-model prefill + decode, p95 (ms), Raspberry Pi 5, n = 60")
         axes.set_ylabel("Exact match, golden test set")
@@ -701,8 +712,7 @@ def article_pareto() -> Path:
 
 
 def article_master() -> list[Path]:
-    return [article_em_bars(), article_latency_stack(), article_thermal(), article_ood(),
-            article_pareto()]
+    return [article_em_bars(), article_thermal(), article_ood(), article_pareto()]
 
 
 # -----------------------------------------------------------------------------
@@ -801,7 +811,10 @@ def reflex_means(condition: str) -> tuple[float, float, float, int]:
     """(spotter delay + quantisation mean, Pi compute + publish mean, total p95, n)."""
     from eval.exp2 import algorithmic_ms, first_own_event
 
-    pairs = [(r, first_own_event(r)) for r in _jsonl(EXP2_RAW / f"{condition}.jsonl")]
+    #: The first pass of each take only: the second replays the same audio through the same
+    #: deterministic spotter, so it repeats the observation rather than adding one.
+    rows = [r for r in _jsonl(EXP2_RAW / f"{condition}.jsonl") if r["pass"] == 0]
+    pairs = [(r, first_own_event(r)) for r in rows]
     pairs = [(r, e) for r, e in pairs if e is not None]
     algorithmic = [algorithmic_ms(r, e) for r, e in pairs]
     system = [e["latency_offset_ms"] - a for (_, e), a in zip(pairs, algorithmic)]
@@ -832,7 +845,7 @@ def article_latency_paths() -> Path:
         top.set_ylim(-0.45, 0.6)
         top.set_yticks([0])
         top.set_yticklabels([f"parse path\n(n = {n_parse})"])
-        top.set_xlabel("ms from end of speech (mean per stage)")
+        top.set_xlabel("ms after endpointing (mean per stage)")
         top.legend(loc="upper center", bbox_to_anchor=(0.45, -0.75), ncol=3, frameon=False,
                    handlelength=1.0, columnspacing=0.8)
         for index, condition in enumerate(("idle", "loaded")):
@@ -935,8 +948,7 @@ def article_formation_boxes() -> Path:
 
 
 def article_ingenieur() -> list[Path]:
-    return [article_keyword_curve(), article_latency_paths(), article_snr(),
-            article_formation_boxes()]
+    return [article_keyword_curve(), article_latency_paths(), article_formation_boxes()]
 
 
 def run() -> int:
