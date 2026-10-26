@@ -4,7 +4,7 @@
 [![Hardware](https://img.shields.io/badge/Hardware-Raspberry%20Pi%205%20(8GB)-red.svg)](https://www.raspberrypi.com/)
 [![Simulation](https://img.shields.io/badge/Simulation-PyFlyt%20%7C%20PyBullet-green.svg)](https://github.com/jjshoots/PyFlyt)
 [![Inference](https://img.shields.io/badge/Inference-llama.cpp%20%7C%20whisper.cpp-purple.svg)](https://github.com/ggerganov)
-[![License](https://img.shields.io/badge/License-Not%20Licensed-lightgrey.svg)](#)
+[![License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](LICENSE) [![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-lightgrey.svg)](LICENSE-DATA.md)
 
 > **Zero-cloud, fully offline natural language command and control for autonomous drone swarms, running in real time on a Raspberry Pi 5.**
 
