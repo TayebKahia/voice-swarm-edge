@@ -72,30 +72,27 @@ Visualization, Writing -- original draft}
 
 \begin{abstract}
 A drone that must keep working without a network has to parse spoken commands on its own
-processor. We compare three instruction-tuned small language models, SmolLM2-360M,
-Qwen2.5-0.5B and Llama-3.2-1B, fine-tuned with low-rank adaptation to map transcripts of
-drone-swarm commands to a fixed JSON schema, quantised to Q8\_0 and Q4\_K\_M, and decoded under a
-bounded grammar by \texttt{llama.cpp} on the CPU of a Raspberry Pi~5.\deleted[id=PR]{ A fourth model of matched
-size, H2O-Danube3-500M, controls for model family.} On a 200-item golden test set of recorded
-commands, scored on reference transcripts, Qwen2.5-0.5B at Q4\_K\_M reaches an exact match of
-0.935 and Llama-3.2-1B 0.910, a difference that is not significant (exact McNemar $p = 0.0625$)\added[id=PR]{ and the order reverses on out-of-domain input};
-both exceed SmolLM2-360M (0.760).\deleted[id=PR]{ At matched size, Qwen2.5-0.5B exceeds H2O-Danube3-500M by 6.5 percentage points (exploratory, $p = 0.0023$), a contrast that also differs in prompt rendering and training session.}\added[id=PR]{ Most of their golden-set errors are one systematic mistake: a clockwise turn parsed as counter-clockwise.}\AuditID{P8, P5, P9} The accuracy cost of the deployment
-pipeline, from the fp16 model to the quantised artefact under the grammar, lies within
-$\pm$1.5 points and is not significant, and removing the grammar produces one malformed output in
-3,540 decodes. On the cooled board Qwen2.5-0.5B decodes at 27.93 tokens/s; without active
-cooling every trial throttled and throughput fell to 18.13 tokens/s, below the 20 tokens/s
-floor. A selection rule that applies the deployment constraints first selects Qwen2.5-0.5B at
-Q4\_K\_M only after re-baselining the latency budget: its end-to-end latency (3,122~ms at the
-95th percentile) exceeds the 2,500~ms budget, and no configuration meets the false-command target on out-of-domain input
-($\leq$~0.05; measured 0.19--0.39) or the safe-failure target.
+processor. We fine-tune three small language models of 0.36 to 1.24 billion parameters
+(SmolLM2-360M, Qwen2.5-0.5B, Llama-3.2-1B) to map command transcripts to a fixed schema, quantise
+them to 8-bit and 4-bit formats, decode them under a bounded grammar, and time them on a
+Raspberry Pi~5. On 200 commands read aloud and scored on reference transcripts, Qwen2.5-0.5B in
+the 4-bit format reaches an exact match of 0.935 and Llama-3.2-1B 0.910, a difference that is not
+significant and reverses on out-of-domain input; both exceed SmolLM2-360M (0.760). Most of the
+two leading models' golden-set errors are one mistake: a clockwise turn parsed as
+counter-clockwise. Quantisation and the grammar cost no detectable accuracy (at most 1.5 points),
+and without the grammar one output in 3,540 is malformed. On a cooled board Qwen2.5-0.5B decodes
+27.9 tokens per second; uncooled, every trial throttled and throughput fell to 18.1, below a floor
+of 20. No model abstains reliably: 19 to 39\% of out-of-domain inputs become commands. For narrow
+on-board parsers, models should be chosen by accuracy under the deployed grammar, by the board's
+thermal state and by abstention, not by parameter count.\AuditID{rewritten: P18, P2, P7}
 \end{abstract}
 
 \begin{highlights}
-\item Three fine-tuned small language models parse drone commands on a Raspberry Pi 5
-\item A 0.5B model scores 0.935 against 0.910 for a 1.2B model, a non-significant gap
+\item \replaced[id=PR]{Fine-tuned 0.5B and 1.2B parsers are not separated on drone commands (0.935, 0.910)}{Three fine-tuned small language models parse drone commands on a Raspberry Pi 5}\AuditID{P18}
+\item \replaced[id=PR]{The leading models' main error: clockwise turns parsed as counter-clockwise}{A 0.5B model scores 0.935 against 0.910 for a 1.2B model, a non-significant gap}
 \item \replaced[id=PR]{No model meets the false-command target on out-of-domain input (0.19--0.39)}{At matched size, two model families differ by 6.5 points in exact match}\AuditID{P8}
-\item Without its grammar, the parser emitted one malformed output in 3,540 decodes
-\item Qwen2.5-0.5B falls below the 20 tokens/s throughput floor without active cooling
+\item \replaced[id=PR]{Quantisation and a bounded grammar cost no detectable exact-match accuracy}{Without its grammar, the parser emitted one malformed output in 3,540 decodes}
+\item \replaced[id=PR]{Uncooled, the Raspberry Pi 5 throttled in every trial and fell below 20 tokens/s}{Qwen2.5-0.5B falls below the 20 tokens/s throughput floor without active cooling}
 \end{highlights}
 
 \begin{keywords}
@@ -130,15 +127,22 @@ violate a grammar~\citep{willard2023,koo2024}, provided that the grammar itself 
 The components of this problem have been studied separately. Benchmarks on single-board computers
 time models without scoring a task~\citep{sbc2025}. Quantisation studies score general-purpose
 benchmarks with an unconstrained decoder, mostly at larger scales~\citep{kurtic2025,kurt2026,slmquant}.
-Studies of constrained decoding evaluate models that were not fine-tuned to the target
-format~\citep{geng2023,tam2024}. Choosing a model to deploy on a board requires task accuracy
+\replaced[id=PR]{Studies of constrained decoding find that a grammar removes structural failures in small models
+but not semantic ones~\citep{chavan2026}, and that a hard schema can lower the accuracy of a small
+model that was not trained to it~\citep{ray2026}; they run on GPUs, mostly without
+fine-tuning~\citep{geng2023,tam2024}. Studies of function calling with small models fine-tune and
+time them on edge devices, but without a grammar~\citep{kavathekar2025,tinyagent2024}, and a
+recent drone interface fine-tunes and compares five small models for on-device command
+parsing~\citep{ahmed2026}.}{Studies of constrained decoding evaluate models that were not fine-tuned to the target
+format~\mbox{\citep{geng2023,tam2024}}.}\chcomment[id=PR]{P6} Choosing a model to deploy on a board requires task accuracy
 under the deployed runtime and grammar, measured together with latency, throughput and memory on
-that board.
+that board\added[id=PR]{, and with the uncertainty that a small, patterned test set allows}.
 
 This article reports such a comparison for a voice interface that commands a swarm of five
 simulated drones. The system around the parser, including its speech front end, safety layers and
 formation control, is described in a companion paper~\citep{companion}; here we address model
 selection. The contributions are:
+\AuditDeletedBlock{%
 \begin{itemize}
 \item A comparison of three fine-tuned small language models of 0.36--1.24~B parameters at two
   quantisation levels of the GGUF file format of \texttt{llama.cpp} under a bounded grammar. It scores accuracy and abstention with paired
@@ -152,7 +156,22 @@ selection. The contributions are:
   throughput floor,
   and a selection rule that applies the deployment constraints first and reports its own failure,
   beside two abstention targets that no configuration meets.
-\end{itemize}
+\end{itemize}}%
+\AuditAddedBlock{%
+\begin{itemize}
+\item On 590 test items, fine-tuned models of 0.49 and 1.24~B parameters are not separated (0.935
+  against 0.910 on the golden set, with the order reversed out of domain), while both exceed a
+  0.36~B model by 15 to 17.5 points. Uncertainty is reported at the level of the command pattern,
+  the unit that was sampled.
+\item The deployment pipeline, from the fine-tuned model at 16-bit precision to the 4-bit artefact
+  under the grammar, costs at most three golden items net. The grammar changes no artefact's
+  accuracy by more than two items and removes the only malformed output in 3,540 decodes.
+\item The dominant residual error, a reversed rotation direction, matches an imbalance in how the
+  training data phrase a rotation, a lesson for the design of command schemas and their data.
+\item On one board and artefact, active cooling decides whether the selected model meets a
+  20~tokens/s throughput floor; and no configuration abstains adequately on out-of-domain input
+  (false-command rates of 0.19 to 0.39 against a target of 0.05).
+\end{itemize}}\AuditID{P18}
 
 Section~\ref{sec:related} reviews the closest work. Section~\ref{sec:methods} describes the task,
 models and protocol, Section~\ref{sec:results} reports the measurements,
@@ -169,8 +188,16 @@ TypeFly drives a single drone with GPT-4 through a compact plan language and kee
 below 1.5~s on its benchmark~\citep{typefly2024}. For swarms, CommandSwarm generates behaviour
 trees with open models of 6.7--14~B parameters at 4-bit precision, gated by a
 parser~\citep{commandswarm2026}, and LLM2Swarm is mainly conceptual, with a preliminary test of
-TinyLlama on a Raspberry Pi~5~\citep{llm2swarm2024}. These systems rely on remote or multi-billion
-parameter models, or test a small model for generation speed only, and none compares small models for on-board parsing under a latency budget.
+TinyLlama on a Raspberry Pi~5~\citep{llm2swarm2024}. \added[id=PR]{Two recent drone interfaces move the language
+model close to the vehicle. \citet{nguyen2026fme} serve Llama~3.1-8B on a Jetson Orin NX beside a
+Raspberry Pi that runs speech recognition, for Vietnamese commands to one drone.
+\citet{ahmed2026} fine-tune five small models, encoder--decoder and decoder-only, on 5,450
+labelled drone commands with a rejection class, and run the selected parser without a cloud
+service. }These systems rely on remote or multi-billion
+parameter models, or test a small model for generation speed only\replaced[id=PR]{; the two that compare or deploy
+models near the vehicle do not, as far as their reports describe, constrain decoding with a
+grammar, measure the accuracy cost of quantisation, or time the parser on a CPU-only
+single-board computer.}{, and none compares small models for on-board parsing under a latency budget.}\chcomment[id=PR]{P6}
 
 \paragraph{Inference on single-board computers and quantisation.} \citet{sbc2025} benchmark 25
 quantised models on three single-board computers under two runtimes. They find that models of up
@@ -190,8 +217,21 @@ validity holds by construction~\citep{willard2023,koo2024}. \citet{geng2023} app
 structured natural-language-processing tasks without fine-tuning. The literature also documents costs:
 constraints distort the model's distribution over grammatical outputs~\citep{park2024}, and format
 restrictions lower accuracy on reasoning tasks while matching or improving it on classification
-tasks~\citep{tam2024}. These studies evaluate models that were not fine-tuned to the target format,
-so what a grammar adds after fine-tuning is not reported.
+tasks~\citep{tam2024}. \replaced[id=PR]{For models of 0.6--4~B parameters, constrained decoding brings schema
+validity to 100\% but leaves a semantic gap that depends on scale~\citep{chavan2026}. For
+Qwen2.5-0.5B, Qwen2.5-1.5B and SmolLM2-1.7B prompted without fine-tuning, a hard schema raised
+validity to 100\% while lowering answer accuracy, the cost \citet{ray2026} call a constraint tax.
+SLOT instead fine-tunes a small model to restructure another model's output and combines it with
+constrained decoding~\citep{slot2025}. These studies run on GPUs and on general-purpose schemas;
+none isolates what a grammar adds to a model fine-tuned to a narrow command schema on the CPU
+runtime it is deployed with.}{These studies evaluate models that were not fine-tuned to the target format,
+so what a grammar adds after fine-tuning is not reported.}\chcomment[id=PR]{P6}
+
+\paragraph{\added[id=PR]{Small models for function calling.}} \added[id=PR]{A narrow command schema is a small instance of function
+calling. \citet{kavathekar2025} compare small models prompted zero-shot, few-shot and after
+fine-tuning, and time them on an edge device; the models struggled to keep the output format, and
+no grammar was applied. TinyAgent fine-tunes 1.1~B and 7~B models for function
+calling and quantises them to run on a laptop~\citep{tinyagent2024}.}
 
 \paragraph{Intent and slot corpora.} Mapping an utterance to an intent and its slots is an
 established formulation of spoken-language understanding~\citep{qin2021}. SLURP and MASSIVE cover
@@ -199,10 +239,18 @@ assistant domains~\citep{slurp2020,massive}, and the Snips platform parses comma
 hardware with a classical pattern-and-tagger pipeline rather than a language
 model~\citep{snips2018}. We found no public corpus for swarm commands.
 
-\paragraph{Gap.} No study we reviewed scores fine-tuned language models below 1.5~B parameters on a
+\paragraph{Gap.} \replaced[id=PR]{Fine-tuned small command parsers, constrained decoding and single-board
+inference have each been studied, but we found no study that measures them together: the accuracy
+of fine-tuned models below 1.5~B parameters on a command schema under the deployed grammar and
+quantisation, with paired tests, beside the latency, throughput, memory and thermal state of the
+same artefacts on a CPU-only single-board computer. This article makes that measurement for one
+schema and one device. The literature was searched in October 2026 on arXiv, the ACL Anthology,
+DBLP and a general web search engine, with combinations of ``small language model'',
+``quantization'', ``constrained'' or ``structured'' decoding, ``function calling'', ``drone'' or
+``UAV'', ``voice command'' and ``Raspberry Pi''.}{No study we reviewed scores fine-tuned language models below 1.5~B parameters on a
 command-parsing task under a grammar while timing the same quantised artefacts on a single-board
 computer. This article fills that gap for one task and one device, and adds a family control, a
-deployment-pipeline delta and a grammar ablation to the comparison.
+deployment-pipeline delta and a grammar ablation to the comparison.}\chcomment[id=PR]{P6}
 
 % =============================================================================
 \section{Methods}
@@ -260,9 +308,11 @@ them. Apart from those 12, the authors wrote every out-of-domain item.}{:
 assistant-style queries, unsupported requests, truncated fragments, and 12 recogniser outputs on
 noise and silence.}\chcomment[id=PR]{P10} A 240-pair validation set selects checkpoints. Every accuracy figure in this
 article takes the reference transcript as input. The recogniser's word error rate on the golden
-speaker is 23.1\% (95\% confidence interval, CI, 20.3--25.9) for the recogniser alone without its domain prompt, and
+speaker is 23.1\% (95\% confidence interval, CI, 20.3--25.9) for the recogniser alone without its domain prompt\replaced[id=PR]{;
+accuracy from audio, through the full speech pipeline, is the subject of the companion
+paper~\citep{companion}.}{, and
 23.3\% through the deployed pipeline, where accuracy from audio is reported in the companion
-paper~\citep{companion}.
+paper~\mbox{\citep{companion}}.}\chcomment[id=PR]{P2}
 
 \subsection{Models and fine-tuning}
 \label{sec:models}
@@ -380,12 +430,24 @@ $\geq$~0.90 on the golden test set; prefill p95 $\leq$~250~ms and decode p95 $\l
 combine to a language-model allowance of 1,350~ms; a throughput floor of 20~tokens/s, which
 follows from a 22-token decode allowance within 1,100~ms; end-to-end p95 $\leq$~2,500~ms from the
 end of speech; peak memory $\leq$~2.5~GiB for the full stack; throttled trials $\leq$~5\%; a
-safe-failure rate $\geq$~0.70; and a false-command rate $\leq$~0.05. The selection rule deploys the
+safe-failure rate $\geq$~0.70; and a false-command rate $\leq$~0.05. \replaced[id=PR]{The selection rule fixed with
+these targets deployed the configuration with the highest golden-set EM among those that satisfy
+the end-to-end budget and the full-stack memory ceiling. Neither constraint can be measured on the
+parser alone: both belong to the whole system, which the companion paper
+evaluates~\citep{companion}. Under that rule, a selection was possible only after re-baselining the
+end-to-end budget to the selected model's own measurement, which made it circular. After the
+results we therefore restated the rule on the constraints this study measures for every timed
+configuration, and report the restatement as a post-hoc change: the language-model allowance
+(prefill-and-decode p95 $\leq$~1,350~ms), the throughput floor, throttled trials $\leq$~5\% and a
+peak memory of the language-model process of at most 2.5~GiB. Among the configurations that meet
+all four, the rule deploys the one with the highest golden-set EM, breaking ties toward lower p95
+latency. A partial measurement can show that a configuration misses a constraint but not that it
+satisfies it.}{The selection rule deploys the
 configuration with the highest golden-set EM among those that satisfy the end-to-end budget and the
 memory ceiling, breaking ties toward lower p95 latency. A partial measurement can show that a
 configuration misses a constraint but not that it satisfies it. If no configuration satisfies both
 constraints, each unmet constraint is re-baselined to the measured figure, and the re-baselining is
-reported.
+reported.}\chcomment[id=PR]{P7}
 
 % =============================================================================
 \section{Results}
@@ -468,10 +530,12 @@ All              & 200 & 152 & 187 & 182 & 174 \\
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_em_bars.pdf}
-\caption{Exact match on the golden test set by model and precision. fp16 bars are the fine-tuned
-model on the reference surface (\texttt{transformers}, no grammar); \QE{} and \QF{} bars are the
-deployed surface (\texttt{llama.cpp}, grammar on). H2O-Danube3-500M (hatched) has no deployed
-artefact (Section~\ref{sec:surfaces}); the family contrast is drawn between the two fp16 bars.}
+\caption{Exact match on the golden test set by model and precision\added[id=PR]{, with 95\% intervals that resample
+the 12 command patterns}. fp16 \replaced[id=PR]{points}{bars} are the fine-tuned
+model on the reference surface (\texttt{transformers}, no grammar); \QE{} and \QF{} \replaced[id=PR]{points}{bars} are the
+deployed surface (\texttt{llama.cpp}, grammar on)\added[id=PR]{, so the gap between a model's fp16 point and its
+deployed points is the accuracy cost of the deployment pipeline (Section~\ref{sec:res-delta})}. H2O-Danube3-500M (\replaced[id=PR]{open square}{hatched}) has no deployed
+artefact (Section~\ref{sec:surfaces})\deleted[id=PR]{; the family contrast is drawn between the two fp16 bars}.\AuditID{P18, P3}}
 \label{fig:em}
 \end{figure}
 
@@ -494,6 +558,7 @@ over a 3.4-fold difference in parameters, but the endpoints also differ in famil
 \subsection{Accuracy cost of the deployment pipeline}
 \label{sec:res-delta}
 
+\AuditDeletedBlock{%
 \begin{table}
 \caption{Golden-set EM of each fp16 reference model and its deployed artefacts. $b$/$c$: items
 only the reference / only the deployed artefact gets right; $p$: exact McNemar, exploratory
@@ -513,10 +578,14 @@ Llama-3.2-1B & \QE{} & 0.925 & 0.915 & $-1.0$ & 2/0 & 0.50 \\
              & \QF{} & 0.925 & 0.910 & $-1.5$ & 3/0 & 0.25 \\
 \bottomrule
 \end{tabular*}
-\end{table}
+\end{table}}\AuditID{P18}
 
-Table~\ref{tab:delta} compares each fp16 reference model with its deployed artefacts on the golden
-set. The differences span $-1.5$ to $+1.5$\pp{}, no difference exceeds three items net, and none
+\replaced[id=PR]{Figure~\ref{fig:em} compares each fp16 reference model with its deployed artefacts on the golden
+set. Counting the items only the reference / only the deployed artefact gets right, the six pairs
+are 0/3 (SmolLM2-360M, \QE{}), 12/9 (SmolLM2-360M, \QF{}), 1/0 and 0/0 (Qwen2.5-0.5B), and 2/0
+and 3/0 (Llama-3.2-1B), tested by exact McNemar in an exploratory family of six
+($\alpha = 0.0083$).}{Table~\mbox{\ref{tab:delta}} compares each fp16 reference model with its deployed artefacts on the golden
+set.}\chcomment[id=PR]{P18} The differences span $-1.5$ to $+1.5$\pp{}, no difference exceeds three items net, and none
 reaches significance; the smallest $p$ is 0.25. SmolLM2-360M at \QE{} scores above its own fp16
 reference.
 
@@ -610,6 +679,7 @@ precisions, and the two artefacts disagree on 24 items, split 12 to 12.
 \subsection{Latency, throughput and memory}
 \label{sec:res-latency}
 
+\AuditDeletedBlock{%
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_latency_stack.pdf}
@@ -619,9 +689,9 @@ diamonds mark the measured p95 of the total, since percentiles of the two stages
 dashed line is the 1,350~ms language-model allowance, a p95 target. Prefill uses a cached prompt
 prefix.}
 \label{fig:latency}
-\end{figure}
+\end{figure}}\AuditID{P18}
 
-On the cooled board (Figure~\ref{fig:latency}), Qwen2.5-0.5B decodes at 27.93~tokens/s with a
+On the cooled board (\replaced[id=PR]{Table~\ref{tab:comparison}}{Figure~\mbox{\ref{fig:latency}}}), Qwen2.5-0.5B decodes at 27.93~tokens/s with a
 combined prefill-and-decode p95 of 1,072~ms; SmolLM2-360M reaches 40.63~tokens/s and 894~ms, and
 Llama-3.2-1B 14.53~tokens/s and 2,282~ms; Llama-3.2-1B misses the 20~tokens/s floor. Decode p95 is
 1,033~ms, 785~ms and 1,842~ms respectively, against the 1,100~ms allowance, which Llama-3.2-1B
@@ -631,9 +701,9 @@ least 1,656~ms (95\% order-statistic bound), so its miss is established; Qwen2.5
 margin below is resolved by this run.}\chcomment[id=PR]{P17} Prefill p95 is 328.8~ms for Qwen2.5-0.5B, which misses the 250~ms allowance (p50
 38.5~ms; 8 of 60 trials above it), 241.4~ms for SmolLM2-360M and 457.5~ms for Llama-3.2-1B, whose
 p50 of 267.7~ms already exceeds the allowance (34 of 60 trials above it). With a cached prefix,
-Qwen2.5-0.5B has 278~ms to spare against the combined 1,350~ms allowance. Without the prompt cache,
+Qwen2.5-0.5B has 278~ms to spare against the combined 1,350~ms allowance\added[id=PR]{ on the point estimate}.\deleted[id=PR]{ Without the prompt cache,
 as the deployed parser runs, its prefill p95 is 751~ms and its combined prefill-and-decode p95
-1,658~ms, above the 1,350~ms allowance, which assumes a cached prefix~\citep{companion}. Peak resident
+1,658~ms, above the 1,350~ms allowance, which assumes a cached prefix~\mbox{\citep{companion}}.}\chcomment[id=PR]{P2} Peak resident
 memory of the language-model process is 0.68~GiB for Qwen2.5-0.5B, 0.55~GiB for SmolLM2-360M and 1.63~GiB for Llama-3.2-1B.
 
 \subsection{Thermal state}
@@ -702,17 +772,23 @@ one with a negative yaw.}\chcomment[id=PR]{P9}
 \includegraphics[width=\columnwidth]{figures/fig_pareto.pdf}
 \caption{Golden-set EM against language-model p95 for the three \QF{} configurations on the cooled
 Raspberry Pi~5; filled markers are non-dominated. Point labels give the p95 and the peak resident memory of the language-model process. Solid line: the 1,350~ms language-model
-allowance, measured on the same quantity as the axis; dashed: the 2,500~ms end-to-end budget, of
-which the axis measures only part; dotted: the 0.85 EM threshold. The \QE{} artefacts were not
-timed and are not plotted.}
+allowance\replaced[id=PR]{, one of the selection constraints}{, measured on the same quantity as the axis; dashed: the 2,500~ms end-to-end budget, of
+which the axis measures only part}; dotted: the 0.85 EM threshold. The \QE{} artefacts were not
+timed and are not plotted.\AuditID{P7}}
 \label{fig:pareto}
 \end{figure}
 
-Figure~\ref{fig:pareto} places the three timed configurations against the constraints. No
+Figure~\ref{fig:pareto} places the three timed configurations against the constraints. \replaced[id=PR]{Llama-3.2-1B
+misses two of the four: its prefill-and-decode p95 is 2,282~ms (at least 1,895~ms at 95\%) against
+the 1,350~ms allowance, and its throughput, 14.53~tokens/s, is below the floor. Qwen2.5-0.5B
+(1,072~ms, 27.93~tokens/s, 0.68~GiB) and SmolLM2-360M (894~ms, 40.63~tokens/s, 0.55~GiB) meet all
+four on the point estimates, and no trial of either was throttled. The rule selects Qwen2.5-0.5B at
+\QF{}, whose golden-set EM exceeds SmolLM2-360M's by 17.5\pp{}, a margin that holds when the
+patterns are resampled (+10.0 to +25.0\pp{}). No \QE{} artefact exceeds 0.935, and none was timed.}{No
 configuration is shown to satisfy both constraints of the selection rule. The memory ceiling applies to
 the full stack, which was not measured; the language-model process alone uses 0.55--1.63~GiB, about
 35\% or more below the ceiling. The end-to-end budget was measured for Qwen2.5-0.5B only, by the
-latency experiment of the companion paper~\citep{companion}: its p95, measured from the endpointer's end-of-utterance decision, is 3,122~ms over 226 speech
+latency experiment of the companion paper~\mbox{\citep{companion}}: its p95, measured from the endpointer's end-of-utterance decision, is 3,122~ms over 226 speech
 segments (3,602~ms when the endpointing wait is included), 622~ms (25\%) above the budget. The shortest speech-recognition time in that experiment
 is 1,063~ms, so Llama-3.2-1B's end-to-end p95 is at least 3,346~ms. SmolLM2-360M was not measured
 end to end.
@@ -721,11 +797,15 @@ Under the failure clause, the memory ceiling is applied to the language-model pr
 configuration satisfies, and the end-to-end budget is re-baselined to the measured 3,122~ms, which
 Llama-3.2-1B misses and SmolLM2-360M is not shown to meet. The rule selects Qwen2.5-0.5B at \QF{}.
 Admitting SmolLM2-360M as well leaves the selection unchanged, because its EM of 0.760 is
-significantly lower (Table~\ref{tab:mcnemar}). No \QE{} artefact exceeds 0.935. Qwen2.5-0.5B at
+significantly lower (Table~\mbox{\ref{tab:mcnemar}}). No \QE{} artefact exceeds 0.935.}\chcomment[id=PR]{P7, P2} Qwen2.5-0.5B at
 \QF{} is the only configuration that meets the EM, intent-F1, decode, throughput and throttling
 targets and, with a cached prefix, the combined language-model allowance together; it misses the
 250~ms prefill allowance. Qwen2.5-0.5B and SmolLM2-360M are non-dominated, and
-Llama-3.2-1B is dominated on the point estimates.
+Llama-3.2-1B is dominated on the point estimates.\added[id=PR]{ Two qualifications apply to the selection. Sixty trials
+bound Qwen2.5-0.5B's prefill-and-decode p95 only from below (1,033~ms), so its margin under the
+allowance is not resolved. And the allowance assumes a cached prompt prefix, whereas the deployed
+parser runs without the cache; whether the complete system then meets its end-to-end budget is
+measured in the companion paper~\citep{companion}.}\chcomment[id=PR]{P7}
 
 % =============================================================================
 \section{Discussion}
@@ -762,8 +842,11 @@ truncation loop of Section~\ref{sec:intro}, and the bounded grammar makes it unr
 documented costs of constrained decoding, distribution distortion~\citep{park2024} and lower
 accuracy on reasoning tasks~\citep{tam2024}, do not appear in EM here. This is consistent with
 the finding of \citet{tam2024} for classification-like tasks: a single-turn schema with ten intents is closer
-to classification than to multi-step reasoning. Prior grammar studies used models that were not
-fine-tuned to the format~\citep{geng2023,tam2024}. For a fine-tuned model, \replaced[id=PR]{our data detect no
+to classification than to multi-step reasoning. \replaced[id=PR]{It also contrasts with the constraint tax that
+\citet{ray2026} measured on the same Qwen2.5-0.5B prompted without fine-tuning: once the model has
+been fine-tuned to the format, its outputs already lie inside the grammar's language almost
+always, so masking changes nearly nothing.}{Prior grammar studies used models that were not
+fine-tuned to the format~\mbox{\citep{geng2023,tam2024}}.}\chcomment[id=PR]{P6} For a fine-tuned model, \replaced[id=PR]{our data detect no
 accuracy effect of the grammar at this sample size, in either direction, on inputs like the
 training distribution; what it adds is the guarantee.}{our data suggest the
 grammar is cheap insurance rather than a source of accuracy.}\chcomment[id=PR]{P10}
@@ -808,7 +891,8 @@ remedies follow\added[id=PR]{ for abstention}: a confidence gate that routes low
 training pairs that map degraded commands to \texttt{unknown}. Neither was implemented here.
 
 \paragraph{Limitations.} All accuracy figures are measured on reference transcripts, so they
-overstate what the pipeline achieves from audio: through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts~\citep{companion}. The golden set is one non-native English speaker in one session; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its 200 items are paraphrases
+overstate what the pipeline achieves from audio: \replaced[id=PR]{the companion paper reports a command recognition rate of
+0.690 for the selected configuration on the same recordings in clean audio~\citep{companion}.}{through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts~\mbox{\citep{companion}}.}\chcomment[id=PR]{P2} The golden set is one non-native English speaker in one session; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its 200 items are paraphrases
 of 12 command patterns, so the effective sample is smaller than 200\replaced[id=PR]{: the accuracy intervals
 resample patterns, but 12 patterns make them approximate, and the McNemar $p$-values remain
 item-level and optimistic.}{ and the intervals and
@@ -838,8 +922,11 @@ grammar guarantees structural validity at no \added[id=PR]{detectable }accuracy 
 from fp16 to the quantised artefact costs no established accuracy. \replaced[id=PR]{Most remaining golden-set errors
 of the two leading models are clockwise turns parsed as counter-clockwise, consistent with an
 imbalance in how the training data phrase a rotation. Two further results}{Two results} qualify the choice:
-its end-to-end latency exceeds the 2,500~ms budget, and no configuration meets the false-command or
-safe-failure targets.\chcomment[id=PR]{P9} Future work will add a log-probability confidence gate and training pairs for
+\replaced[id=PR]{the language-model allowance it meets assumes a cached prompt prefix that the deployed parser
+does not use}{its end-to-end latency exceeds the 2,500~ms budget}, and no configuration meets the false-command or
+safe-failure targets.\chcomment[id=PR]{P9, P7} \added[id=PR]{For narrow parsers on a single-board computer, these results
+argue for choosing a model by its accuracy under the deployed grammar, by the board's thermal
+state and by its abstention, rather than by parameter count. }Future work will add a log-probability confidence gate and training pairs for
 unreadable commands to address abstention, and will measure the smaller SmolLM2-360M end to end to
 complete the frontier at its fast end.
 

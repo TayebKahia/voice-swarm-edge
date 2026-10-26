@@ -32,6 +32,9 @@
 \newcommand{\AuditID}[1]{\ifbool{Changes@optiondraft}{\textsuperscript{\color{blue}\tiny[#1]}}{}}
 \newcommand{\AuditDeletedBlock}[1]{\ifbool{Changes@optiondraft}{{\color{red}#1}}{}}
 \newcommand{\AuditAddedBlock}[1]{\ifbool{Changes@optiondraft}{{\color{blue}#1}}{#1}}
+%% A table row cannot sit inside a group, so a deleted row is dropped whole under [final] and
+%% shown, cell by cell struck through, in draft.
+\newcommand{\AuditDeletedRow}[1]{\ifbool{Changes@optiondraft}{#1}{}}
 \makeatother
 
 \newcommand{\QF}{Q4\_K\_M}
@@ -68,28 +71,28 @@ Visualization, Writing -- original draft}
 \cortext[1]{Corresponding author.}
 
 \begin{abstract}
-A language-model voice interface is too slow to stop a drone swarm: its parser cannot start before
-the operator finishes speaking. We present a voice interface whose speech and language stages
-run on a Raspberry Pi~5 and which splits commands between two paths. A parse path transcribes each utterance and
-parses it with a fine-tuned small language model under a grammar. A reflex
-path, a two-class keyword spotter, publishes a hold or an abort without transcription and preempts
-any decode in progress. A membership rule admits to the reflex path only commands whose delay
-changes the physical outcome and whose false trigger can only make the swarm do less: two of the
-ten intents. \replaced[id=PR]{In all 39 recorded keyword takes that met a decode, the trigger cancelled it}{All 78 reflex triggers that met a decode cancelled it}, with no class confusion, but
-recovery took 1,195~ms at the 95th percentile against 300~ms. The reflex path missed its 150~ms budget (545~ms at the 95th
-percentile idle, \replaced[id=PR]{556}{547}~ms under load), almost entirely before the board's share of \replaced[id=PR]{5--18}{6--18}~ms.\AuditID{P16} The
-parse path took 3,122~ms at the 95th percentile from the endpointer's end-of-utterance decision against 2,500~ms, driven by
-speech recognition and uncached prefill. Under rotor noise, command recognition fell from 0.690 in
-clean audio to 0.590 at 10~dB, missing both targets, and the safe-failure rate stayed at
-0.014--0.039 against 0.70. Commanded directly rather than by voice, five drones in a kinematic simulator converged in all 150 formation trials\replaced[id=PR]{; the absence of collisions holds by construction of a separation clamp}{ without collision, a result that rests on a
-separation clamp}.\AuditID{P14} No physical flight, live-microphone run or run with networking disabled was performed.
+A language-model voice interface is slow to stop a drone swarm: its parser cannot start before
+the operator finishes speaking. Our interface runs its speech and language stages on a Raspberry
+Pi~5 and splits commands between two paths. A parse path
+transcribes each utterance and parses it with a fine-tuned small language model under a grammar; a
+reflex path, a two-class keyword spotter, publishes a hold or an abort without transcription and
+cancels any parse in progress. A two-test rule admits to the reflex path only commands whose delay
+changes the outcome and whose false trigger can only make the swarm do less: two of ten. On recorded audio, each of 39 keyword takes that met a parse cancelled
+it, with no class confusion. Both paths miss their latency budgets: the reflex path takes 545--556~ms
+at the 95th percentile against 150~ms, almost all of it before the board's 5--18~ms, and the parse
+path 3,122~ms against 2,500~ms. Under rotor
+noise, command recognition falls from 0.690 to 0.590 at 10~dB, and almost no failure resolves to
+a hold. The rule
+and the budget carry over to other voice interfaces, and the misses locate what to change next:
+the spotter's decision delay, the recogniser and prompt caching. No physical flight or
+live-microphone run was performed.\AuditID{rewritten: P18, P16}
 \end{abstract}
 
 \begin{highlights}
-\item A keyword-spotter reflex path preempts a small language model on a Raspberry Pi 5
-\item A two-test membership rule admits only hold and abort to the reflex path
+\item \replaced[id=PR]{Stop commands bypass the language model through a keyword-spotter reflex path}{A keyword-spotter reflex path preempts a small language model on a Raspberry Pi 5}\AuditID{P18}
+\item \replaced[id=PR]{A two-test rule admits only hold and abort to the reflex path}{A two-test membership rule admits only hold and abort to the reflex path}
 \item \replaced[id=PR]{Each of 39 keyword takes met during inference cancelled the decode}{All 78 reflex triggers during inference cancelled the decode in progress}\AuditID{P16}
-\item Reflex latency misses its budget before the board; the board adds only \replaced[id=PR]{5--18}{6--18} ms
+\item \replaced[id=PR]{Reflex p95 is 545 ms against 150 ms; post-detection board time is 5--18 ms}{Reflex latency misses its budget before the board; the board adds only 6--18 ms}
 \item Rotor noise lowers command recognition from 0.690 (clean) to 0.590 at 10 dB
 \end{highlights}
 
@@ -123,7 +126,8 @@ systems we reviewed.
 
 This article presents a voice interface for a swarm of five drones whose speech and language stages all run on a
 Raspberry Pi~5, with no cloud service, and addresses both problems. A companion paper selects and evaluates the language
-model it uses~\citep{companion}; here we describe and evaluate the system built around it. The contribution we claim is narrow:
+model it uses~\citep{companion}; here we describe and evaluate the system built around it. \replaced[id=PR]{The contributions are:}{The contribution we claim is narrow:}
+\AuditDeletedBlock{%
 
 \begin{itemize}
 \item A membership rule for a path that bypasses interpretation: a command qualifies only if its
@@ -140,7 +144,23 @@ not claimed as novel: preemption of a slower path by a fast gate is prior art~\c
 the decoding grammar is the companion paper's. We evaluate both paths against the budget, idle and
 under load, together with keyword-spotter error rates, recognition under rotor noise including the
 direction of the errors, and formation control of five simulated drones, and report every missed
-target.
+target.}%
+\AuditAddedBlock{%
+\begin{itemize}
+\item A membership rule for commands that bypass interpretation: a command qualifies only if its
+  delay changes the physical outcome and its unprompted execution can only make the swarm do less.
+  Applied to a ten-intent schema it admits exactly a hold and an abort, and it states the condition
+  under which a third class could be admitted.
+\item A per-stage latency budget for that path, measured on the board while the language model
+  decodes on the same processor, which separates the spotter's decision delay (540~ms at p95) from
+  the board's own share (5--18~ms).
+\item An open, CPU-only implementation used to measure both: a dual-path runtime with preemption,
+  an ordering rule that keeps a stale command from overriding a stop, and three validation layers,
+  evaluated against every target, with each miss located.
+\end{itemize}
+Preemption of a slower path by a fast gate is prior art~\citep{mira}, and the decoding grammar is
+the companion paper's; what this article adds is the rule that restricts the fast path and the
+budget against which its latency is located.}\AuditID{P18}
 
 Section~\ref{sec:related} reviews the closest work, Section~\ref{sec:methods} describes the system and
 the experimental setup, Section~\ref{sec:results} reports the measurements,
@@ -159,7 +179,10 @@ TypeFly streams a compact plan language from a remote GPT-4 and keeps response t
 1.5~s~\citep{typefly2024}, and the agent of \citet{lim2025} prompts open models on a local
 workstation GPU. \citet{silva2026} treat the model as an untrusted commander validated on a
 server, \citet{sikorski2025} run recognition offline beside a local model on a GPU-equipped
-computer, and \citet{torkamani2025} route between a model on a Jetson board and the cloud. For swarms, SwarmChat offers voice and text
+computer, and \citet{torkamani2025} route between a model on a Jetson board and the cloud.\added[id=PR]{
+\citet{nguyen2026fme} split the chain between a Raspberry Pi, for speech recognition, and a Jetson
+Orin NX, for an 8~B model, and \citet{ahmed2026} run a fine-tuned small parser without a cloud
+service.}\chcomment[id=PR]{P6} For swarms, SwarmChat offers voice and text
 through rule-based intent matching~\citep{swarmchat2025}; \citet{iannoli2026} evaluate
 general-purpose models on swarm missions in software-in-the-loop simulation; SkySim places a
 cloud-hosted planner above a potential-field layer and holds position when a waypoint is
@@ -258,7 +281,7 @@ detection (VAD) model (Silero VAD;~\citealp{silero}) segments the stream into ut
 quantised to \QF{}~\citep{qwen25} parses the transcript into a single-line JSON command under a
 bounded grammar in the GBNF (GGML Backus--Naur form) formalism served by \texttt{llama.cpp}~\citep{llamacpp}, and a semantic validator checks
 the result before it is published. The model, the grammar and the system prompt are taken unchanged
-from the companion paper, which selects the model by comparing candidates on accuracy at two quantisation levels and on latency at \QF{} on the same board and reports its exact match of 0.935 on reference transcripts~\citep{companion}. The
+from the companion paper, which selects the model by comparing candidates on accuracy at two quantisation levels and on latency at \QF{} on the same board and reports its exact match of 0.935 on \added[id=PR]{the }reference transcripts\added[id=PR]{ of the 200 golden recordings used here}~\citep{companion}.\chcomment[id=PR]{P2} The
 \emph{reflex path} is a two-class keyword spotter that listens continuously and, on detecting
 \emph{swarm hold} or \emph{swarm abort}, publishes a fixed command without transcribing anything.
 
@@ -302,11 +325,12 @@ Intent & Latency-decisive & Fail-safe if false & Path \\
 \texttt{land}      & No: descent is slow & Yes & Parse \\
 \texttt{set\_param} & No & Yes, if it lowers speed & Parse \\
 \texttt{unknown}   & No: nothing dispatched & Yes & Parse \\
-\texttt{takeoff}   & -- & No: spins up rotors & Parse only \\
-\texttt{move}      & -- & No: uncommanded translation & Parse only \\
-\texttt{altitude}  & -- & No: uncommanded climb & Parse only \\
-\texttt{rotate}    & -- & No: uncommanded yaw & Parse only \\
-\texttt{formation} & -- & No: every vehicle moves & Parse only \\
+\AuditDeletedRow{\deleted[id=PR]{\texttt{takeoff}} & \deleted[id=PR]{--} & \deleted[id=PR]{No: spins up rotors} & \deleted[id=PR]{Parse only} \\}
+\AuditDeletedRow{\deleted[id=PR]{\texttt{move}} & \deleted[id=PR]{--} & \deleted[id=PR]{No: uncommanded translation} & \deleted[id=PR]{Parse only} \\}
+\AuditDeletedRow{\deleted[id=PR]{\texttt{altitude}} & \deleted[id=PR]{--} & \deleted[id=PR]{No: uncommanded climb} & \deleted[id=PR]{Parse only} \\}
+\AuditDeletedRow{\deleted[id=PR]{\texttt{rotate}} & \deleted[id=PR]{--} & \deleted[id=PR]{No: uncommanded yaw} & \deleted[id=PR]{Parse only} \\}
+\AuditDeletedRow{\deleted[id=PR]{\texttt{formation}} & \deleted[id=PR]{--} & \deleted[id=PR]{No: every vehicle moves} & \deleted[id=PR]{Parse only} \\}
+\AuditAddedBlock{\parbox[t]{1.55cm}{\raggedright\texttt{takeoff}, \texttt{move}, \texttt{altitude}, \texttt{rotate}, \texttt{formation}}} & \added[id=PR]{--} & \added[id=PR]{No: each starts or changes motion} & \added[id=PR]{Parse only} \\
 \bottomrule
 \end{tabular*}
 \end{table}
@@ -433,11 +457,12 @@ lies wholly outside, and otherwise \emph{not demonstrated}.
 path once clean and once at each of 20, 15, 10 and 5~dB signal-to-noise ratio, with rotor noise from
 the evaluation partition of DREGON~\citep{dregon} mixed against the active speech. The command
 recognition rate (CRR) is the fraction of utterances whose dispatched commands all match the
-reference under the canonical comparison of the companion paper; an utterance split into several
+reference \replaced[id=PR]{once both are in canonical form (keys in a fixed order, absent slots omitted, numbers
+rounded to one decimal, identifier lists sorted and deduplicated)}{under the canonical comparison of the companion paper}\chcomment[id=PR]{P2}; an utterance split into several
 segments counts as recognised only if every command it dispatched is correct. Exact match (EM) on
 the reference transcript of the same items gives the parser's own accuracy, so EM minus CRR is the
 accuracy the speech stage costs. Word error rate (WER) and the safe-failure rate (the share of failed
-utterances resolving to \texttt{unknown} or a hold) are reported per condition. Intervals are 95\%
+utterances resolving to \texttt{unknown} or a hold\added[id=PR]{, with a target of at least 0.70}) are reported per condition. Intervals are 95\%
 bootstrap intervals over utterances. Across conditions we report \deleted[id=PR]{a one-way analysis of variance (ANOVA) on the
 arcsine-transformed CRR with the Tukey--Kramer comparison~\mbox{\citep{kramer1956}}, }Cochran's
 $Q$~\citep{cochran1950}\replaced[id=PR]{ and}{, and} pairwise \added[id=PR]{exact }McNemar tests~\citep{mcnemar1947}\deleted[id=PR]{ (exact below 25 discordant
@@ -497,10 +522,11 @@ Preemption recovery & 78 & 601 & 1,195 & \added[id=PR]{1,042--1,505} & 300 & mis
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_latency_paths.pdf}
-\caption{Where the time goes on each path. (a) Parse path from the end of speech: mean time per
+\caption{Where the time goes on each path. (a) Parse path \replaced[id=PR]{after endpointing}{from the end of speech}: mean time per
 stage, stacked (226 segments). (b) Reflex path from the keyword offset, idle and loaded: mean spotter
-delay plus frame quantisation, and mean computation and publication on the board (78 detections
-each\added[id=PR]{, 39 takes replayed twice; the p95 diamonds are over the 78 trials and differ slightly from the per-take values of Table~\ref{tab:latency}}).\AuditID{P16} Means add up to the mean total; diamonds mark the measured p95 of the total, since stage
+delay plus frame quantisation, and mean computation and publication on the board (\replaced[id=PR]{first pass of
+each of 39 detecting takes}{78 detections
+each}).\AuditID{P16, P18} Means add up to the mean total; diamonds mark the measured p95 of the total, since stage
 percentiles do not add. Dashed lines: p95 budgets.}
 \label{fig:latency}
 \end{figure}
@@ -586,6 +612,7 @@ Clean & 0.690 [0.625, 0.750] & 23.3 [20.2, 26.6] & 0.245 [0.185, 0.310] & 0.032 
 \end{tabular*}
 \end{table*}
 
+\AuditDeletedBlock{%
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_snr.pdf}
@@ -593,7 +620,7 @@ Clean & 0.690 [0.625, 0.750] & 23.3 [20.2, 26.6] & 0.245 [0.185, 0.310] & 0.032 
 the 200 golden recordings, with 95\% bootstrap intervals. Dashed and dotted lines: the clean-audio
 target of 0.80 and the 10~dB target of 0.65.}
 \label{fig:snr}
-\end{figure}
+\end{figure}}\AuditID{P18}
 
 In clean audio the CRR was 0.690 [0.625, 0.750] against a target of at least 0.80
 (Table~\ref{tab:acoustic}); the parser alone reached an EM of 0.935 on the same items, so the speech
@@ -602,7 +629,7 @@ splits accounted for 22 (23 of the 200 utterances, 11.5\%, were split at a pause
 recognition errors that left the intent right but a slot wrong for 23, recognition errors that changed
 the intent for 5, and parser errors already present on the reference text for 12. Scored on the last
 segment of each utterance only, the clean CRR was 0.730. At 10~dB the CRR was 0.590 [0.520, 0.660]
-against a target of at least 0.65 (Fig.~\ref{fig:snr}); recognition errors that changed the intent
+against a target of at least 0.65 (\replaced[id=PR]{Table~\ref{tab:acoustic}}{Fig.~\mbox{\ref{fig:snr}}}); recognition errors that changed the intent
 rose from 5 to 19 and those that corrupted a slot from 23 to 30, while parser errors stayed at 12.
 The CRR reached 0.80 at no level and held at 0.65 or above down to 15~dB on the point estimate.
 
@@ -621,6 +648,7 @@ workstation to 0.485 on the board; the board's figures are reported.
 \subsection{Formation control}
 \label{sec:res-formation}
 
+\AuditDeletedBlock{%
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig_trajectories.pdf}
@@ -628,7 +656,7 @@ workstation to 0.485 on the board; the board's figures are reported.
 backend: start (open circle), position at 60~s (filled circle), assigned slot (cross) and the 0.5~m
 formation-accuracy tolerance (dotted circle). Trial 1 (seed 42) of each formation; colours identify vehicles.}
 \label{fig:trajectories}
-\end{figure*}
+\end{figure*}}\AuditID{P18}
 
 \begin{figure}
 \centering
@@ -638,7 +666,7 @@ formation-accuracy tolerance (dotted circle). Trial 1 (seed 42) of each formatio
 \label{fig:boxes}
 \end{figure}
 
-All 150 trials converged (Fig.~\ref{fig:trajectories} shows one trial of each formation), the slowest after 4.32~s, and formation
+All 150 trials converged\deleted[id=PR]{ (Fig.~\mbox{\ref{fig:trajectories}} shows one trial of each formation)}, the slowest after 4.32~s, and formation
 accuracy was 1.000 in every trial. Median convergence time was 4.06~s for the circle (interquartile
 range 4.00--4.08~s), 3.26~s for the line (3.21--3.32~s) and 2.30~s for the wedge (2.21--2.38~s)
 (Fig.~\ref{fig:boxes})\replaced[id=PR]{; the interquartile ranges do not overlap}{. The ANOVA rejected equality ($F(2, 147) = 3500.7$,
@@ -660,21 +688,22 @@ of those 144 trials, and 0.82--0.89~m in the other six.}\chcomment[id=PR]{P14}
 \label{sec:res-summary}
 
 \begin{table}
-\caption{Every requirement of the system other than the safe-failure target, which is defined in
-the companion paper and reported in Section~\ref{sec:res-acoustic}, with its measured result. ``Not dem.'' (not demonstrated): the 95\%
+\caption{Every requirement of the system\deleted[id=PR]{ other than the safe-failure target, which is defined in
+the companion paper and reported in Section~\mbox{\ref{sec:res-acoustic}}}, with its measured result.\added[id=PR]{ Engineering checks
+(simulation backends, state-machine legality, per-stage attribution) are reported in the text.} ``Not dem.'' (not demonstrated): the 95\%
 interval straddles the target. ``Not run'': requires an end-to-end run with networking disabled,
 which was not performed.\added[id=PR]{ ``By constr.'': holds by construction, so the trial count is not evidence.}\AuditID{P14, P16}}
 \label{tab:summary}
 \footnotesize\setlength{\tabcolsep}{2.5pt}
-\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{2.65cm}l@{}}
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{3.1cm}l@{}}
 \toprule
 Requirement & Measured & Verdict \\
 \midrule
 Reflex path preempts the parse path & \replaced[id=PR]{39/39 takes cancelled the decode}{78/78 decodes cancelled}; 0 cross-triggers & met \\
 Formation control, five drones & 150/150 trials converged & met \\
-Two simulation backends & Smoke tests pass, same gains & met \\
-Flight state machine & Every legality case tested & met \\
-Per-stage attribution & All five stages, p50 and p95 & met \\
+\AuditDeletedRow{\deleted[id=PR]{Two simulation backends} & \deleted[id=PR]{Smoke tests pass, same gains} & \deleted[id=PR]{met} \\}
+\AuditDeletedRow{\deleted[id=PR]{Flight state machine} & \deleted[id=PR]{Every legality case tested} & \deleted[id=PR]{met} \\}
+\AuditDeletedRow{\deleted[id=PR]{Per-stage attribution} & \deleted[id=PR]{All five stages, p50 and p95} & \deleted[id=PR]{met} \\}
 Collisions & 0 in 150 trials (clamp) & \replaced[id=PR]{by constr.}{met} \\
 Formation accuracy $\geq 0.85$ & 1.000 in every trial & met \\
 Reflex latency $\leq 150$~ms & 545 idle, \replaced[id=PR]{556}{547} loaded & missed \\
@@ -682,6 +711,7 @@ End to end $\leq 2{,}500$~ms & 3,122 & missed \\
 Recovery $\leq 300$~ms & 1,195 & missed \\
 Clean CRR $\geq 0.80$ & 0.690 & missed \\
 CRR at 10~dB $\geq 0.65$ & 0.590 & missed \\
+\added[id=PR]{Safe-failure rate $\geq 0.70$} & \added[id=PR]{0.014--0.039} & \added[id=PR]{missed} \\
 Keyword false accepts $\leq 1$/h & 2.33 [0.06, 12.98] & not dem. \\
 Keyword false rejects $\leq 0.10$ & hold 0.050 [0.001, 0.249], abort 0.000 [0.000, 0.168] & not dem. \\
 Offline speech recognition & -- & not run \\
@@ -691,9 +721,13 @@ Live demonstration & -- & not performed \\
 \end{tabular*}
 \end{table}
 
-Table~\ref{tab:summary} collects the seventeen requirements: \replaced[id=PR]{six are met, one holds by construction}{seven are met}, five are missed, two
+Table~\ref{tab:summary} collects the \replaced[id=PR]{fifteen requirements: three are met, one holds by construction, six are
+missed, two are not demonstrated, two have not been run, and the live demonstration was not
+performed. Three engineering checks also pass: both simulation backends run with the same gains,
+the flight state machine passes a test of every legality case, and every stage of both paths is
+attributed at p50 and p95.}{seventeen requirements: six are met, one holds by construction, five are missed, two
 are not demonstrated, two have not been run, and the live demonstration was not performed. The
-safe-failure target, defined in the companion paper, is also missed at every noise level.
+safe-failure target, defined in the companion paper, is also missed at every noise level.}\chcomment[id=PR]{P2, P18}
 
 % =============================================================================
 \section{Discussion}
@@ -810,7 +844,7 @@ relationships that could have appeared to influence the work reported in this pa
 \section*{Data availability}
 The runtime, the swarm controller and simulation backends, the keyword-spotter training and
 evaluation scripts, the golden-set and keyword recordings, the raw records of every experiment and
-the scripts that produce every table and figure in this article except Fig.~\ref{fig:trajectories}, which is distributed as rendered, are publicly available at
+the scripts that produce every table and figure in this article\deleted[id=PR]{ except Fig.~\mbox{\ref{fig:trajectories}}, which is distributed as rendered}, are publicly available at
 \url{https://github.com/TayebKahia/voice-swarm-edge-}. The deployed language-model artefact is
 distributed through the repository's releases.\added[id=PR]{ Code is released under the MIT licence and the authors' data, recordings and results under
 CC~BY~4.0. The recordings are of the first author, who consents to their release. Third-party
