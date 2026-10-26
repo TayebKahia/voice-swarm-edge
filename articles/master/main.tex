@@ -17,18 +17,22 @@
 \lstset{basicstyle=\ttfamily\scriptsize,breaklines=true,columns=fullflexible,
         frame=none,aboveskip=4pt,belowskip=4pt}
 
-%% Change tracking for the step-1 audit (articles/REVIEW_step1_audit.md).
+%% Change tracking for the step-2 peer review (articles/REVIEW_step2_peer_review.md); the IDs
+%% (P1, P3, ...) are the rows of its prioritised action plan. Step-1 audit markup is accepted.
 %% cas-dc already defines \comment, so the margin note of `changes' is \chcomment here.
 \usepackage[draft,commandnameprefix=ifneeded]{changes}   % switch to [final] to strip all markup before submission
-\definechangesauthor[name={Audit}, color=blue]{AU}
+\definechangesauthor[name={Review}, color=blue]{PR}
 \setaddedmarkup{{\color{blue}#1}}
 \setdeletedmarkup{{\color{red}\sout{#1}}}
 \setlength{\marginparwidth}{1.2cm}
 \setuptodonotes{size=\tiny}
-%% Inside floats, where margin notes cannot go, the finding ID is printed inline instead; like
-%% the rest of the markup, it disappears under [final].
+%% Inside floats, where margin notes cannot go, the finding ID is printed inline instead. Whole
+%% blocks (a list item, a table) cannot be struck through, so they are coloured instead. Like the
+%% rest of the markup, all of this disappears under [final].
 \makeatletter
 \newcommand{\AuditID}[1]{\ifbool{Changes@optiondraft}{\textsuperscript{\color{blue}\tiny[#1]}}{}}
+\newcommand{\AuditDeletedBlock}[1]{\ifbool{Changes@optiondraft}{{\color{red}#1}}{}}
+\newcommand{\AuditAddedBlock}[1]{\ifbool{Changes@optiondraft}{{\color{blue}#1}}{#1}}
 \makeatother
 
 \newcommand{\pp}{\,pp}
@@ -51,33 +55,31 @@
 parsing on a Raspberry Pi 5: an accuracy--efficiency comparison}
 
 \author[1]{Tayeb Kahia}
-% \cormark[1]   % PLACEHOLDER: mark the corresponding author
-\ead{<email-author-1>}
+\cormark[1]
+\ead{tayeb.kahia.ai@gmail.com}
 \credit{Conceptualization, Methodology, Software, Investigation, Data curation, Formal analysis,
 Visualization, Writing -- original draft}
 
 \author[1]{Belkacem Khaldi}
-% \cormark[1]   % PLACEHOLDER: mark the corresponding author
-\ead{<email-author-2>}
+\ead{<email-author-2>}   % PLACEHOLDER: Khaldi's e-mail
 \credit{Conceptualization, Methodology, Supervision, Writing -- review \& editing}
 
 \affiliation[1]{organization={\'Ecole Sup\'erieure en Informatique -- 08 Mai 1945},
             city={Sidi Bel Abb\`es},
             country={Algeria}}
 
-\cortext[1]{Corresponding author: <to be confirmed>}
+\cortext[1]{Corresponding author.}
 
 \begin{abstract}
 A drone that must keep working without a network has to parse spoken commands on its own
 processor. We compare three instruction-tuned small language models, SmolLM2-360M,
 Qwen2.5-0.5B and Llama-3.2-1B, fine-tuned with low-rank adaptation to map transcripts of
 drone-swarm commands to a fixed JSON schema, quantised to Q8\_0 and Q4\_K\_M, and decoded under a
-bounded grammar by \texttt{llama.cpp} on the CPU of a Raspberry Pi~5. A fourth model of matched
-size, H2O-Danube3-500M, controls for model family. On a 200-item golden test set of recorded
+bounded grammar by \texttt{llama.cpp} on the CPU of a Raspberry Pi~5.\deleted[id=PR]{ A fourth model of matched
+size, H2O-Danube3-500M, controls for model family.} On a 200-item golden test set of recorded
 commands, scored on reference transcripts, Qwen2.5-0.5B at Q4\_K\_M reaches an exact match of
-0.935 and Llama-3.2-1B 0.910, a difference that is not significant (exact McNemar $p = 0.0625$);
-both exceed SmolLM2-360M (0.760). At matched size, \replaced[id=AU]{Qwen2.5-0.5B exceeds H2O-Danube3-500M}{family alone separates Qwen2.5-0.5B from
-H2O-Danube3-500M} by 6.5 percentage points (\added[id=AU]{exploratory, }$p = 0.0023$)\added[id=AU]{, a contrast that also differs in prompt rendering and training session}.\AuditID{M-01} The accuracy cost of the deployment
+0.935 and Llama-3.2-1B 0.910, a difference that is not significant (exact McNemar $p = 0.0625$)\added[id=PR]{ and the order reverses on out-of-domain input};
+both exceed SmolLM2-360M (0.760).\deleted[id=PR]{ At matched size, Qwen2.5-0.5B exceeds H2O-Danube3-500M by 6.5 percentage points (exploratory, $p = 0.0023$), a contrast that also differs in prompt rendering and training session.}\added[id=PR]{ Most of their golden-set errors are one systematic mistake: a clockwise turn parsed as counter-clockwise.}\AuditID{P8, P5, P9} The accuracy cost of the deployment
 pipeline, from the fp16 model to the quantised artefact under the grammar, lies within
 $\pm$1.5 points and is not significant, and removing the grammar produces one malformed output in
 3,540 decodes. On the cooled board Qwen2.5-0.5B decodes at 27.93 tokens/s; without active
@@ -91,7 +93,7 @@ Q4\_K\_M only after re-baselining the latency budget: its end-to-end latency (3,
 \begin{highlights}
 \item Three fine-tuned small language models parse drone commands on a Raspberry Pi 5
 \item A 0.5B model scores 0.935 against 0.910 for a 1.2B model, a non-significant gap
-\item \replaced[id=AU]{At matched size, two model families differ by 6.5 points in exact match}{At matched size, model family alone changes exact match by 6.5 points}\AuditID{M-01}
+\item \replaced[id=PR]{No model meets the false-command target on out-of-domain input (0.19--0.39)}{At matched size, two model families differ by 6.5 points in exact match}\AuditID{P8}
 \item Without its grammar, the parser emitted one malformed output in 3,540 decodes
 \item Qwen2.5-0.5B falls below the 20 tokens/s throughput floor without active cooling
 \end{highlights}
@@ -119,9 +121,9 @@ separate question, and it has to be answered on the task.
 Command parsing adds a requirement that general benchmarks do not capture. The parser's output is
 read by a controller, not by a person, and a controller cannot act on a command that is right in
 intent but malformed in syntax. Structural validity is therefore a precondition rather than one
-component of accuracy. In a preliminary zero-shot test \added[id=AU]{of five commands }on the target board, Qwen2.5-0.5B under an
-early grammar repeated drone identifiers \replaced[id=AU]{on two of them, including}{for the command} ``swarm land'' until the token cap
-truncated the output; the truncated output failed to parse\replaced[id=AU]{ and resolved to a hover, so the landing was not executed}{, and the landing was lost}.\chcomment[id=AU]{M-23}
+component of accuracy. In a preliminary zero-shot test of five commands on the target board, Qwen2.5-0.5B under an
+early grammar repeated drone identifiers on two of them, including ``swarm land'' until the token cap
+truncated the output; the truncated output failed to parse and resolved to a hover, so the landing was not executed.
 Grammar-constrained decoding makes such failures unreachable by masking every token that would
 violate a grammar~\citep{willard2023,koo2024}, provided that the grammar itself is bounded.
 
@@ -139,17 +141,17 @@ formation control, is described in a companion paper~\citep{companion}; here we 
 selection. The contributions are:
 \begin{itemize}
 \item A comparison of three fine-tuned small language models of 0.36--1.24~B parameters at two
-  \replaced[id=AU]{quantisation levels of the GGUF file format of \texttt{llama.cpp}}{GGUF quantisation levels} under a bounded grammar.\chcomment[id=AU]{M-10} It scores accuracy and abstention with paired
-  statistical tests and times latency, throughput and memory on a Raspberry Pi~5.
-\item A parameter-matched control showing that, at about 0.5~B parameters\added[id=AU]{ and under one training budget}, \replaced[id=AU]{two model families differ by 6.5 percentage points in exact match}{model family alone
-  changes exact match by 6.5 percentage points}.\chcomment[id=AU]{M-01}
+  quantisation levels of the GGUF file format of \texttt{llama.cpp} under a bounded grammar. It scores accuracy and abstention with paired
+  statistical tests and times latency, throughput and memory on a Raspberry Pi~5.\added[id=PR]{ Uncertainty is
+  reported at the level of the command pattern, the unit that was sampled, as well as the item.}
+\AuditDeletedBlock{\item A parameter-matched control showing that, at about 0.5~B parameters and under one training budget, two model families differ by 6.5 percentage points in exact match.}\AuditID{P8, P3}
 \item A measurement of the accuracy cost of the full deployment pipeline, from the fp16 model to
   the quantised artefact under the grammar, and a grammar ablation that measures what the grammar
   adds once a model has been fine-tuned to the format.
 \item Evidence that the thermal state of the board decides whether the selected model meets the
   throughput floor,
   and a selection rule that applies the deployment constraints first and reports its own failure,
-  \replaced[id=AU]{beside}{including} two abstention targets that no configuration meets.\chcomment[id=AU]{M-17}
+  beside two abstention targets that no configuration meets.
 \end{itemize}
 
 Section~\ref{sec:related} reviews the closest work. Section~\ref{sec:methods} describes the task,
@@ -168,15 +170,15 @@ below 1.5~s on its benchmark~\citep{typefly2024}. For swarms, CommandSwarm gener
 trees with open models of 6.7--14~B parameters at 4-bit precision, gated by a
 parser~\citep{commandswarm2026}, and LLM2Swarm is mainly conceptual, with a preliminary test of
 TinyLlama on a Raspberry Pi~5~\citep{llm2swarm2024}. These systems rely on remote or multi-billion
-parameter models\added[id=AU]{, or test a small model for generation speed only}, and none compares\chcomment[id=AU]{M-22} small models for on-board parsing under a latency budget.
+parameter models, or test a small model for generation speed only, and none compares small models for on-board parsing under a latency budget.
 
 \paragraph{Inference on single-board computers and quantisation.} \citet{sbc2025} benchmark 25
 quantised models on three single-board computers under two runtimes. They find that models of up
 to about 1.5~B parameters are served reliably and that the runtime alone changed throughput by up
 to four times on one board. They report throughput and resource use, not task
 accuracy. Post-training quantisation methods reduce the memory footprint of language
-models~\citep{gptq}, and AWQ lists on-device deployment among its motivations~\citep{awq}. Their cost is evaluated as \deleted[id=AU]{perplexity and }accuracy on
-general-purpose suites\added[id=AU]{, and for the \texttt{llama.cpp} formats also as perplexity}:\chcomment[id=AU]{M-15} for FP8, INT8 and INT4 formats on models of 1.5 to 405~B
+models~\citep{gptq}, and AWQ lists on-device deployment among its motivations~\citep{awq}. Their cost is evaluated as accuracy on
+general-purpose suites, and for the \texttt{llama.cpp} formats also as perplexity: for FP8, INT8 and INT4 formats on models of 1.5 to 405~B
 parameters~\citep{kurtic2025}, for the \texttt{llama.cpp}
 formats on Llama-3.1-8B-Instruct together with CPU throughput~\citep{kurt2026}, and for small
 models on generic benchmarks~\citep{slmquant}. None of these studies scores a structured-output
@@ -185,7 +187,7 @@ task under a constrained decoder.
 \paragraph{Grammar-constrained decoding.} Constrained decoding restricts, at every step, the tokens
 a model may emit to those that keep the output inside a formal language, so that structural
 validity holds by construction~\citep{willard2023,koo2024}. \citet{geng2023} apply grammars to
-structured \replaced[id=AU]{natural-language-processing}{NLP} tasks\chcomment[id=AU]{M-10} without fine-tuning. The literature also documents costs:
+structured natural-language-processing tasks without fine-tuning. The literature also documents costs:
 constraints distort the model's distribution over grammatical outputs~\citep{park2024}, and format
 restrictions lower accuracy on reasoning tasks while matching or improving it on classification
 tasks~\citep{tam2024}. These studies evaluate models that were not fine-tuned to the target format,
@@ -225,7 +227,7 @@ Omitting absent slots shortens the decode: over the 200 golden labels a command 
 tokens under the Qwen2.5 tokeniser, against 19.6 if each intent's absent slots were emitted as
 nulls.
 
-The schema is enforced by a context-free grammar in the GBNF \added[id=AU]{(GGML Backus--Naur form) }formalism of
+The schema is enforced by a context-free grammar in the GBNF (GGML Backus--Naur form) formalism of
 \texttt{llama.cpp}~\citep{llamacpp}, with one alternative per intent and enumerated shapes and
 directions. Every rule is bounded. A number has at most three integer digits and one decimal, and
 an identifier list holds at most five identifiers in $0$--$4$; the second bound removes the
@@ -241,19 +243,24 @@ The corpus is built label first: each target command is written before the sente
 it, and paraphrases are generated from 120 template families. Splits are assigned by family
 (96/12/12 for training, validation and synthetic test), so every in-domain test item comes from
 families held out from training. The training split has 1,940 pairs. In 872 of them the
-transcript was replaced by the recogniser's output on \replaced[id=AU]{speech synthesised with Piper~\citep{piper}}{synthesised speech}, mixed with \added[id=AU]{rotor and engine }noise \added[id=AU]{from DREGON and ESC-50~\citep{dregon,esc50} }at 20,
-10 or 5~dB signal-to-noise ratio,\chcomment[id=AU]{M-09} so that the parser sees recognition errors in training. The
+transcript was replaced by the recogniser's output on speech synthesised with Piper~\citep{piper}, mixed with rotor and engine noise from DREGON and ESC-50~\citep{dregon,esc50} at 20,
+10 or 5~dB signal-to-noise ratio, so that the parser sees recognition errors in training. The
 \texttt{unknown} intent is taught by 81 pairs: 20 assistant-style queries, 21 requests for
 capabilities the schema lacks and 40 near-misses that contain a command word.
 
 Three test sets are used. The \emph{synthetic test set} has 240 pairs from the 12 held-out
 families. The \emph{golden test set} has 200 commands read aloud by the first author in a quiet room,
 drawn from the same 12 families; they cover all ten intents through 12 command patterns of 10--22
-items each\added[id=AU]{; one of these patterns, \texttt{set\_param} with altitude and spacing, never occurs in training}.\chcomment[id=AU]{M-19} The \emph{out-of-domain set} has 150 inputs whose reference is \texttt{unknown}:
+items each; one of these patterns, \texttt{set\_param} with altitude and spacing, never occurs in training. The \emph{out-of-domain set} has 150 inputs whose reference is \texttt{unknown}\replaced[id=PR]{,
+in four near-equal sources: 38 assistant-style queries written to the intent taxonomy of
+MASSIVE~\citep{massive}, 37 requests for capabilities the schema lacks, 38 truncated fragments
+(commands cut before their slots, such as ``move north''), and 37 recogniser outputs on noise
+and silence, of which 12 were harvested from \texttt{whisper.cpp} and 25 written to imitate
+them. Apart from those 12, the authors wrote every out-of-domain item.}{:
 assistant-style queries, unsupported requests, truncated fragments, and 12 recogniser outputs on
-noise and silence. A 240-pair validation set selects checkpoints. Every accuracy figure in this
+noise and silence.}\chcomment[id=PR]{P10} A 240-pair validation set selects checkpoints. Every accuracy figure in this
 article takes the reference transcript as input. The recogniser's word error rate on the golden
-speaker is 23.1\% (95\% \added[id=AU]{confidence interval, }CI\added[id=AU]{,} 20.3--25.9)\chcomment[id=AU]{M-10} for the recogniser alone without its domain prompt, and
+speaker is 23.1\% (95\% confidence interval, CI, 20.3--25.9) for the recogniser alone without its domain prompt, and
 23.3\% through the deployed pipeline, where accuracy from audio is reported in the companion
 paper~\citep{companion}.
 
@@ -267,12 +274,12 @@ from a different family, size and family are confounded among them. A fourth mod
 H2O-Danube3-500M-Chat (514~M)~\citep{danube3}, lies within 4.0\% of Qwen2.5-0.5B in size and is
 included as a family control, not as a deployment candidate.
 
-All four were fine-tuned with the same \added[id=AU]{low-rank adaptation (}LoRA\added[id=AU]{)} recipe~\citep{lora}:\chcomment[id=AU]{M-10} rank 16, $\alpha = 32$, dropout
+All four were fine-tuned with the same low-rank adaptation (LoRA) recipe~\citep{lora}: rank 16, $\alpha = 32$, dropout
 0.05, adapters on every attention and feed-forward projection, AdamW~\citep{adamw} with learning
 rate $2\times10^{-4}$, cosine schedule and warm-up ratio 0.03, three epochs, effective batch size
 32, sequence length 256, loss on the completion tokens only, fp16 precision on two T4 GPUs
 (which lack native bf16, although the checkpoints are released in bf16), and
-seed 42, with \texttt{peft} 0.19.1~\added[id=AU]{\citep{peft}}, \texttt{transformers} 5.0.0~\added[id=AU]{\citep{transformers}} and PyTorch 2.10.0~\added[id=AU]{\citep{pytorch}} (CUDA 12.8)\chcomment[id=AU]{M-14}
+seed 42, with \texttt{peft} 0.19.1~\citep{peft}, \texttt{transformers} 5.0.0~\citep{transformers} and PyTorch 2.10.0~\citep{pytorch} (CUDA 12.8)
 in the session that trained the three candidates; the software image of the control's session was
 not recorded. The checkpoint with the highest validation exact match was kept. The system prompt is
 the single line ``You are a drone swarm command parser. Output only JSON matching schema.'', with
@@ -299,7 +306,7 @@ ablation of Section~\ref{sec:res-ablation}.
 A mismatch between the chat template used in training and the one applied at inference raises no
 error and degrades accuracy silently. We therefore compared, over ten fixed prompts, both the
 rendered text and the token identifiers produced by the training tokeniser and by
-\texttt{llama.cpp}. The three deployment candidates pass on all ten\added[id=AU]{ at \QF{}; the \QE{} artefacts were not run through the check, but their tokeniser and chat-template metadata are identical to their \QF{} counterparts'. Llama-3.2's template writes the current date into the system turn, so its served prompt differs from the training prompt by that date}.\chcomment[id=AU]{M-03} H2O-Danube3-500M renders
+\texttt{llama.cpp}. The three deployment candidates pass on all ten at \QF{}; the \QE{} artefacts were not run through the check, but their tokeniser and chat-template metadata are identical to their \QF{} counterparts'. Llama-3.2's template writes the current date into the system turn, so its served prompt differs from the training prompt by that date. H2O-Danube3-500M renders
 identical text but segments the word ``drone'' differently, so a quantised artefact of it would
 not be the model that was trained; it is reported on the reference surface only.
 
@@ -314,7 +321,7 @@ The target is a Raspberry Pi~5 with 8~GB of memory and four Cortex-A76 cores; co
 reserved for the audio frame loop. \texttt{llama.cpp} runs on the other three cores with three
 threads under the \texttt{performance} governor (2.4~GHz). Swap is disabled, one model is resident
 at a time, and the page cache is dropped before each configuration loads. Each \QF{} configuration
-is warmed up for ten minutes and then timed over 60 scored trials\added[id=AU]{ (the protocol had planned 200)}\chcomment[id=AU]{M-04} on a fixed sample of golden-set
+is warmed up for ten minutes and then timed over 60 scored trials (the protocol had planned 200) on a fixed sample of golden-set
 transcripts; the
 \QE{} artefacts were not timed. The run of record was made with an active cooler. An earlier run
 under the same protocol without the cooler is reported for comparison. The server's prompt cache
@@ -331,26 +338,39 @@ whitespace removed. Intent F1 is macro-averaged over intents; slot F1 is micro-a
 (key, value) pairs. Schema validity is the fraction of outputs that parse as a conforming command.
 The safe-failure rate is, among wrong outputs, the fraction whose dispatched action is
 \texttt{unknown} or \texttt{hover}. The false-command rate is, on the out-of-domain set, the
-fraction of inputs whose dispatched action is anything other than \texttt{unknown}.\added[id=AU]{ We call an output of \texttt{unknown} or \texttt{hover} an abstention; the two rates measure abstention on wrong outputs and on out-of-domain inputs.}\chcomment[id=AU]{M-11} \replaced[id=AU]{Throughput is the sum of decode tokens divided by the sum of decode time.}{Throughput is
-decode tokens summed over decode time summed.}\chcomment[id=AU]{M-12} Percentiles use the nearest-rank rule; p50 and p95
+fraction of inputs whose dispatched action is anything other than \texttt{unknown}. We call an output of \texttt{unknown} or \texttt{hover} an abstention; the two rates measure abstention on wrong outputs and on out-of-domain inputs. Throughput is the sum of decode tokens divided by the sum of decode time. Percentiles use the nearest-rank rule; p50 and p95
 denote the 50th and 95th percentiles.
 
 \subsection{Statistical analysis}
 \label{sec:stats}
 
 Every configuration decodes the same items deterministically, so predictions are paired and
-McNemar's test~\citep{mcnemar1947} applies: the exact binomial test below 25 discordant pairs and
-the continuity-corrected chi-square from 25 upwards. Two confirmatory families of three
+McNemar's test~\citep{mcnemar1947} applies\replaced[id=PR]{, as the exact binomial test throughout.}{: the exact binomial test below 25 discordant pairs and
+the continuity-corrected chi-square from 25 upwards.}\chcomment[id=PR]{P17} \replaced[id=PR]{One family of three comparisons was
+fixed in the project protocol before any result: model against model at \QF{},
+Bonferroni-corrected~\citep{dunn1961} to $\alpha = 0.0167$ (repository commit \texttt{13847fc},
+1~July 2026). The protocol named the synthetic test set as the paired sample. After the accuracy
+results we made the golden test set primary, because it is the only test set read aloud rather
+than generated, and added a second family, \QE{} against \QF{} within each model. Both changes are
+post hoc, so the model comparison is also reported on the other two test sets
+(Section~\ref{sec:res-paired}). Bonferroni correction is applied within each family, not across
+families. Two further comparisons are exploratory:}{Two confirmatory families of three
 comparisons were fixed before the results: model against model at \QF{}, and \QE{} against \QF{}
-within each model, both on the golden test set, each Bonferroni-corrected~\citep{dunn1961} to
-$\alpha = 0.0167$. Two comparisons added after the results are labelled exploratory: each fp16
+within each model, both on the golden test set, each Bonferroni-corrected~\mbox{\citep{dunn1961}} to
+$\alpha = 0.0167$. Two comparisons added after the results are labelled exploratory:}\chcomment[id=PR]{P5} each fp16
 reference against its quantised artefacts (six pairs, $\alpha = 0.0083$), and the family control
 ($\alpha = 0.05$). Each exact-match figure on the golden set is also given a 95\% percentile
-bootstrap interval over items (10,000 replicates, fixed seed). Overlapping intervals do not
+bootstrap interval\replaced[id=PR]{ (10,000 replicates, seed 20260919)}{ over items (10,000 replicates, fixed seed)}. Overlapping intervals do not
 contradict a significant paired test: each interval describes one score, whereas the paired test
 uses only the items on which two configurations disagree. The 200 golden items are paraphrases
-of 12 patterns and are not independent, so the intervals are narrower, and the $p$-values smaller,
-than they would be for independent items.
+of 12 patterns and are not independent\replaced[id=PR]{: items of one pattern tend to fail together. The intervals
+in this article therefore resample the 12 patterns whole (a cluster bootstrap), which widens them;
+intervals that resample items, and the McNemar $p$-values, which also treat items as independent,
+are smaller than the evidence supports, and are labelled item-level wherever they appear. With 12
+clusters the pattern-level interval is itself approximate~\citep{miller2024}. Latency percentiles are
+given with distribution-free 95\% intervals from order statistics; with 60 trials no observed
+value bounds a p95 from above, so only its lower bound is stated.}{, so the intervals are narrower, and the $p$-values smaller,
+than they would be for independent items.}\chcomment[id=PR]{P3, P17}
 
 \subsection{Deployment targets and selection rule}
 \label{sec:targets}
@@ -380,8 +400,8 @@ the golden (200 items), synthetic (240) and out-of-domain (150) test sets, score
 transcripts; on the out-of-domain set EM is the fraction of inputs answered with
 \texttt{unknown}. Timing on the cooled Raspberry Pi~5, 60 trials per configuration, prefill and
 decode combined; \QE{} was not timed. Mem.: peak resident memory of the language-model process.
-95\% CI: percentile bootstrap over the golden items. Schema validity is 1.000 in every cell and
-is omitted.\added[id=AU]{ Bold: the selected configuration.}\AuditID{M-26}}
+95\% CI: percentile bootstrap \replaced[id=PR]{over the 12 command patterns of the golden set, resampled whole (item-level intervals are narrower; Section~\ref{sec:stats})}{over the golden items}\AuditID{P3}. Schema validity is 1.000 in every cell and
+is omitted. Bold: the selected configuration.}
 \label{tab:comparison}
 \footnotesize\setlength{\tabcolsep}{3pt}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccccc@{}}
@@ -390,26 +410,60 @@ is omitted.\added[id=AU]{ Bold: the selected configuration.}\AuditID{M-26}}
 \cmidrule(lr){3-6}\cmidrule(lr){9-11}
 Model & Quant. & Intent F1 & Slot F1 & EM & 95\% CI & EM & EM & p50/p95 (ms) & tok/s & Mem. (GiB) \\
 \midrule
-SmolLM2-360M & \QE{} & 0.972 & 0.866 & 0.790 & [0.730, 0.845] & 0.812 & 0.607 & -- & -- & -- \\
-             & \QF{} & 0.954 & 0.848 & 0.760 & [0.700, 0.815] & 0.812 & 0.660 & 475/894 & 40.63 & 0.55 \\
-Qwen2.5-0.5B & \QE{} & 1.000 & 0.958 & 0.930 & [0.890, 0.965] & 0.958 & 0.733 & -- & -- & -- \\
-             & \QF{} & 1.000 & 0.961 & \textbf{0.935} & [0.900, 0.965] & 0.954 & 0.747 & 647/1,072 & 27.93 & 0.68 \\
-Llama-3.2-1B & \QE{} & 0.996 & 0.948 & 0.915 & [0.875, 0.950] & 0.963 & 0.800 & -- & -- & -- \\
-             & \QF{} & 0.996 & 0.945 & 0.910 & [0.865, 0.945] & 0.958 & 0.813 & 1,351/2,282 & 14.53 & 1.63 \\
+SmolLM2-360M & \QE{} & 0.972 & 0.866 & 0.790 & \replaced[id=PR]{[0.659, 0.920]}{[0.730, 0.845]} & 0.812 & 0.607 & -- & -- & -- \\
+             & \QF{} & 0.954 & 0.848 & 0.760 & \replaced[id=PR]{[0.649, 0.867]}{[0.700, 0.815]} & 0.812 & 0.660 & 475/894 & 40.63 & 0.55 \\
+Qwen2.5-0.5B & \QE{} & 1.000 & 0.958 & 0.930 & \replaced[id=PR]{[0.823, 1.000]}{[0.890, 0.965]} & 0.958 & 0.733 & -- & -- & -- \\
+             & \QF{} & 1.000 & 0.961 & \textbf{0.935} & \replaced[id=PR]{[0.828, 1.000]}{[0.900, 0.965]} & 0.954 & 0.747 & 647/1,072 & 27.93 & 0.68 \\
+Llama-3.2-1B & \QE{} & 0.996 & 0.948 & 0.915 & \replaced[id=PR]{[0.799, 0.989]}{[0.875, 0.950]} & 0.963 & 0.800 & -- & -- & -- \\
+             & \QF{} & 0.996 & 0.945 & 0.910 & \replaced[id=PR]{[0.794, 0.985]}{[0.865, 0.945]} & 0.958 & 0.813 & 1,351/2,282 & 14.53 & 1.63 \\
 \bottomrule
 \end{tabular*}
 \end{table*}
 
 Table~\ref{tab:comparison} reports the six deployed configurations. On the golden test set,
-Qwen2.5-0.5B at \QF{} reaches an EM of 0.935 (95\% CI 0.900--0.965), Llama-3.2-1B 0.910
-(0.865--0.945) and SmolLM2-360M 0.760 (0.700--0.815), below the 0.85 target, as is its 0.790 at
-\QE{}. On the
+Qwen2.5-0.5B at \QF{} reaches an EM of 0.935 (95\% CI \replaced[id=PR]{0.828--1.000}{0.900--0.965}), Llama-3.2-1B 0.910
+(\replaced[id=PR]{0.794--0.985}{0.865--0.945}) and SmolLM2-360M 0.760 (\replaced[id=PR]{0.649--0.867}{0.700--0.815}), below the 0.85 target, as is its 0.790 at
+\QE{}.\added[id=PR]{ These intervals resample the 12 command patterns; resampling items instead gives
+0.900--0.965, 0.865--0.945 and 0.700--0.815. The difference comes from where the errors are
+(Table~\ref{tab:families}). Of Qwen2.5-0.5B's 13 golden errors, 11 fall in the single rotation
+pattern, where it is right on 11 of 22 items; on the other 178 items it scores 0.989, and
+Llama-3.2-1B 0.966 (10 of 22 on rotation). The two leading models differ mainly in how many
+of the remaining 178 items they miss: 2 against 6.}\chcomment[id=PR]{P3} On the
 synthetic and out-of-domain sets the ordering follows parameter count. Intent F1 on the golden set
 exceeds 0.95 for every configuration and is 1.000 for Qwen2.5-0.5B. Of the 152 golden-set errors
 across the six configurations, 133 (87.5\%) keep the reference intent and err in a parameter.
 Schema validity is 1.000 in all 18 configuration--split cells. Prompted zero-shot at fp16, without
 fine-tuning and without the grammar, none of the four models matches any of the 590 test items
 (EM 0.000 on every split).
+
+\AuditAddedBlock{%
+\begin{table}
+\caption{Correct golden items per command pattern, deployed surface at \QF{}, with the family
+control (Danube3) on the reference surface. Patterns are the 12 held-out template families; each
+covers one intent.\AuditID{P3}}
+\label{tab:families}
+\footnotesize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lrcccc@{}}
+\toprule
+Pattern (intent) & $n$ & SmolLM2 & Qwen2.5 & Llama-3.2 & Danube3 \\
+\midrule
+F005 (formation) & 17 & 14 & 16 & 16 & 15 \\
+F010 (formation) & 17 & 11 & 17 & 15 & 15 \\
+F030 (move)      & 17 &  9 & 16 & 15 & 14 \\
+F043 (move)      & 17 & 16 & 17 & 17 & 17 \\
+F066 (altitude)  & 22 & 17 & 22 & 21 & 22 \\
+F076 (takeoff)   & 16 & 11 & 16 & 16 & 13 \\
+F084 (land)      & 12 & 12 & 12 & 12 & 11 \\
+F092 (hover)     & 12 & 10 & 12 & 12 & 12 \\
+F098 (abort)     & 10 & 10 & 10 & 10 & 10 \\
+F106 (rotate)    & 22 &  9 & 11 & 10 &  8 \\
+F114 (set\_param) & 22 & 17 & 22 & 22 & 22 \\
+F120 (unknown)   & 16 & 16 & 16 & 16 & 15 \\
+\midrule
+All              & 200 & 152 & 187 & 182 & 174 \\
+\bottomrule
+\end{tabular*}
+\end{table}}
 
 \begin{figure}
 \centering
@@ -421,14 +475,18 @@ artefact (Section~\ref{sec:surfaces}); the family contrast is drawn between the 
 \label{fig:em}
 \end{figure}
 
-\subsection{Parameter-matched family control}
+\subsection{Parameter-matched family control\added[id=PR]{ (exploratory)}}
 \label{sec:res-family}
 
 Figure~\ref{fig:em} places the family control beside the three candidates. On the reference
-surface, Qwen2.5-0.5B (494~M) reaches 0.935 (95\% CI 0.900--0.965) and H2O-Danube3-500M (514~M) 0.870
-(0.820--0.915) on the golden set, a difference of 6.5 percentage points (pp) on 15 against 2
+surface, Qwen2.5-0.5B (494~M) reaches 0.935 (95\% CI \replaced[id=PR]{0.828--1.000}{0.900--0.965}) and H2O-Danube3-500M (514~M) 0.870
+(\replaced[id=PR]{0.736--0.963}{0.820--0.915}) on the golden set, a difference of 6.5 percentage points (pp) on 15 against 2
 discordant items (exact McNemar $p = 0.0023$, exploratory), although the two intervals
-overlap. The larger model of the pair is the less accurate on all three test
+overlap.\added[id=PR]{ Resampling the patterns, the paired difference has a 95\% interval of
++2.9 to +10.3\pp{}, and the 17 discordant items fall in 7 of the 12 patterns, so the gap is not
+one pattern's. The contrast is between two single training runs that also differ in prompt
+rendering and training session, so it is reported as an observation, not as an effect of
+family.}\chcomment[id=PR]{P8, P3} The larger model of the pair is the less accurate on all three test
 sets (synthetic 0.954 against 0.887; out-of-domain 0.727 against 0.720). Across the full size
 range, from SmolLM2-360M (0.775) to Llama-3.2-1B (0.925), the reference-surface EM spans 15.0\pp{}
 over a 3.4-fold difference in parameters, but the endpoints also differ in family.
@@ -439,7 +497,7 @@ over a 3.4-fold difference in parameters, but the endpoints also differ in famil
 \begin{table}
 \caption{Golden-set EM of each fp16 reference model and its deployed artefacts. $b$/$c$: items
 only the reference / only the deployed artefact gets right; $p$: exact McNemar, exploratory
-family of six ($\alpha = 0.0083$). \added[id=AU]{$\Delta$: deployed minus fp16. }\AuditID{M-27}Precision, runtime, grammar and decoding settings change
+family of six ($\alpha = 0.0083$). $\Delta$: deployed minus fp16. Precision, runtime, grammar and decoding settings change
 together.}
 \label{tab:delta}
 \footnotesize\setlength{\tabcolsep}{3pt}
@@ -467,10 +525,14 @@ reference.
 
 \begin{table}
 \caption{Grammar ablation: the six deployed artefacts decode the same 590 items greedily with and
-without the grammar; nothing else changes. EM is pooled by item over all models, precisions and
-test sets.}
+without the grammar; nothing else changes. \replaced[id=PR]{With the grammar no output is malformed. Malf.: malformed
+outputs without the grammar; bound: exact one-sided 95\% upper bound on that rate; $b$/$c$: items
+only the grammar-on / grammar-off decode gets right. The pooled row repeats the same 590 items six
+times, so its decodes are not independent.}{EM is pooled by item over all models, precisions and
+test sets.}\AuditID{P10}}
 \label{tab:ablation}
 \footnotesize\setlength{\tabcolsep}{3pt}
+\AuditDeletedBlock{%
 \begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
 Condition & Decodes & Schema validity & Malformed & EM \\
@@ -478,35 +540,57 @@ Condition & Decodes & Schema validity & Malformed & EM \\
 Grammar on  & 3,540 & 1.0000 & 0 & 0.8508 \\
 Grammar off & 3,540 & 0.9997 & 1 & 0.8492 \\
 \bottomrule
-\end{tabular*}
+\end{tabular*}}
+\AuditAddedBlock{%
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}llccccc@{}}
+\toprule
+Model & Quant. & Malf. & Bound & EM on & EM off & $b$/$c$ \\
+\midrule
+SmolLM2-360M & \QE{} & 0 & 0.0051 & 0.7525 & 0.7525 & 0/0 \\
+             & \QF{} & 0 & 0.0051 & 0.7559 & 0.7542 & 1/0 \\
+Qwen2.5-0.5B & \QE{} & 0 & 0.0051 & 0.8915 & 0.8881 & 2/0 \\
+             & \QF{} & 0 & 0.0051 & 0.8949 & 0.8915 & 2/0 \\
+Llama-3.2-1B & \QE{} & 0 & 0.0051 & 0.9051 & 0.9051 & 0/0 \\
+             & \QF{} & 1 & 0.0080 & 0.9051 & 0.9034 & 1/0 \\
+\midrule
+Pooled       &       & 1 &        & 0.8508 & 0.8492 & 6/0 \\
+\bottomrule
+\end{tabular*}}
 \end{table}
 
 Removing the grammar (Table~\ref{tab:ablation}) lowers schema validity from 1.0000 to 0.9997:
 exactly one of 3,540 outputs is malformed. It came from Llama-3.2-1B at \QF{} on the
 out-of-domain query ``what does lidar stand for'', which it answered with a sentence of prose.
-Pooled EM falls from 0.8508 to 0.8492, a difference of 0.17\pp{}, or six decodes.
+Pooled EM falls from 0.8508 to 0.8492, a difference of 0.17\pp{}, or six decodes.\added[id=PR]{ Per artefact, the
+grammar changed between zero and two items, always in its favour, and no difference is
+significant (smallest exact $p = 0.5$). For the five artefacts with no malformed output the data
+bound the malformed rate without the grammar at 0.51\% (one-sided 95\%); the experiment can
+detect a rate of that order, not a rarer one.}\chcomment[id=PR]{P10}
 
 \subsection{Paired comparisons}
 \label{sec:res-paired}
 
 \begin{table}
-\caption{McNemar tests on the golden test set (200 items). $b$/$c$: items only A / only B gets
-right. Exact binomial test unless marked $^\dagger$ (continuity-corrected chi-square, 25 or more
-discordant pairs).}
+\caption{McNemar tests on the golden test set (200 items)\added[id=PR]{ unless a set is named (synthetic, 240 items; out-of-domain, 150)}. $b$/$c$: items only A / only B gets
+right. \replaced[id=PR]{Exact binomial test throughout; $p$ is item-level.}{Exact binomial test unless marked $^\dagger$ (continuity-corrected chi-square, 25 or more
+discordant pairs).}\AuditID{P17}}
 \label{tab:mcnemar}
 \footnotesize\setlength{\tabcolsep}{3pt}
 \begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lcccl@{}}
 \toprule
 A vs B & EM A / EM B & $b$/$c$ & $p$ & Sig. \\
 \midrule
-\multicolumn{5}{@{}l}{\emph{Model vs model, \QF{} (confirmatory, $\alpha = 0.0167$)}} \\
+\multicolumn{5}{@{}l}{\emph{Model vs model, \QF{} (\replaced[id=PR]{protocol family}{confirmatory}, $\alpha = 0.0167$)}} \\
 Llama vs Qwen     & 0.910 / 0.935 & 0/5  & 0.0625 & no \\
-Llama vs SmolLM2  & 0.910 / 0.760 & 34/4 & $2.5\times10^{-6\,\dagger}$ & yes \\
-Qwen vs SmolLM2   & 0.935 / 0.760 & 38/3 & $1.1\times10^{-7\,\dagger}$ & yes \\
-\multicolumn{5}{@{}l}{\emph{\QF{} vs \QE{} (confirmatory, $\alpha = 0.0167$)}} \\
+Llama vs SmolLM2  & 0.910 / 0.760 & 34/4 & \replaced[id=PR]{$6.0\times10^{-7}$}{$2.5\times10^{-6\,\dagger}$} & yes \\
+Qwen vs SmolLM2   & 0.935 / 0.760 & 38/3 & \replaced[id=PR]{$1.0\times10^{-8}$}{$1.1\times10^{-7\,\dagger}$} & yes \\
+\multicolumn{5}{@{}l}{\emph{\QF{} vs \QE{} (\replaced[id=PR]{post hoc}{confirmatory}, $\alpha = 0.0167$)}} \\
 Llama             & 0.910 / 0.915 & 0/1  & 1.00 & no \\
 Qwen              & 0.935 / 0.930 & 1/0  & 1.00 & no \\
 SmolLM2           & 0.760 / 0.790 & 8/14 & 0.29 & no \\
+\multicolumn{5}{@{}l}{\emph{\added[id=PR]{Llama vs Qwen, \QF{}, other sets (descriptive)}}} \\
+\added[id=PR]{Synthetic} & \added[id=PR]{0.958 / 0.954} & \added[id=PR]{4/3} & \added[id=PR]{1.00} & \added[id=PR]{no} \\
+\added[id=PR]{Out-of-domain} & \added[id=PR]{0.813 / 0.747} & \added[id=PR]{17/7} & \added[id=PR]{0.064} & \added[id=PR]{no} \\
 \multicolumn{5}{@{}l}{\emph{Family control, fp16 (exploratory, $\alpha = 0.05$)}} \\
 Qwen vs Danube3   & 0.935 / 0.870 & 15/2 & 0.0023 & yes \\
 \bottomrule
@@ -514,7 +598,12 @@ Qwen vs Danube3   & 0.935 / 0.870 & 15/2 & 0.0023 & yes \\
 \end{table}
 
 Qwen2.5-0.5B and Llama-3.2-1B disagree on five golden items, all in Qwen2.5-0.5B's favour
-(Table~\ref{tab:mcnemar}), $p = 0.0625$. Both models are separated from SmolLM2-360M. No
+(Table~\ref{tab:mcnemar}), $p = 0.0625$\added[id=PR]{; resampling the patterns, the difference has a 95\% interval
+of +0.5 to +4.7\pp{}. The comparison does not hold across test sets: on the synthetic set the two
+models disagree on seven items, split 3 to 4, and on the out-of-domain set Llama-3.2-1B is ahead,
+17 items to 7 ($p = 0.064$). The model comparison was planned on the synthetic set, where it
+finds no difference}\chcomment[id=PR]{P5, P3}. Both models are separated from SmolLM2-360M\added[id=PR]{, also when the patterns are
+resampled (Qwen2.5-0.5B minus SmolLM2-360M, +10.0 to +25.0\pp{})}. No
 \QE{}--\QF{} pair differs significantly. On the synthetic set SmolLM2-360M scores 0.812 at both
 precisions, and the two artefacts disagree on 24 items, split 12 to 12.
 
@@ -536,13 +625,16 @@ On the cooled board (Figure~\ref{fig:latency}), Qwen2.5-0.5B decodes at 27.93~to
 combined prefill-and-decode p95 of 1,072~ms; SmolLM2-360M reaches 40.63~tokens/s and 894~ms, and
 Llama-3.2-1B 14.53~tokens/s and 2,282~ms; Llama-3.2-1B misses the 20~tokens/s floor. Decode p95 is
 1,033~ms, 785~ms and 1,842~ms respectively, against the 1,100~ms allowance, which Llama-3.2-1B
-misses by 67\%. Prefill p95 is 328.8~ms for Qwen2.5-0.5B, which misses the 250~ms allowance (p50
+misses by 67\%.\added[id=PR]{ Sixty trials bound these p95 values from below only. Llama-3.2-1B's decode p95 is at
+least 1,656~ms (95\% order-statistic bound), so its miss is established; Qwen2.5-0.5B's is at least
+880~ms and its combined p95 at least 1,033~ms, so neither its 67~ms decode margin nor its combined
+margin below is resolved by this run.}\chcomment[id=PR]{P17} Prefill p95 is 328.8~ms for Qwen2.5-0.5B, which misses the 250~ms allowance (p50
 38.5~ms; 8 of 60 trials above it), 241.4~ms for SmolLM2-360M and 457.5~ms for Llama-3.2-1B, whose
 p50 of 267.7~ms already exceeds the allowance (34 of 60 trials above it). With a cached prefix,
 Qwen2.5-0.5B has 278~ms to spare against the combined 1,350~ms allowance. Without the prompt cache,
 as the deployed parser runs, its prefill p95 is 751~ms and its combined prefill-and-decode p95
-1,658~ms, \replaced[id=AU]{above the 1,350~ms allowance, which assumes a cached prefix}{which misses the allowance}~\citep{companion}.\chcomment[id=AU]{X-05} Peak resident
-memory of the language-model process is \replaced[id=AU]{0.68~GiB for Qwen2.5-0.5B, 0.55~GiB for SmolLM2-360M and 1.63~GiB for Llama-3.2-1B}{0.55, 0.68 and 1.63~GiB for the three models}.\chcomment[id=AU]{M-07}
+1,658~ms, above the 1,350~ms allowance, which assumes a cached prefix~\citep{companion}. Peak resident
+memory of the language-model process is 0.68~GiB for Qwen2.5-0.5B, 0.55~GiB for SmolLM2-360M and 1.63~GiB for Llama-3.2-1B.
 
 \subsection{Thermal state}
 \label{sec:res-thermal}
@@ -552,7 +644,7 @@ memory of the language-model process is \replaced[id=AU]{0.68~GiB for Qwen2.5-0.
 \includegraphics[width=\columnwidth]{figures/fig_thermal.pdf}
 \caption{Decode p95 (top) and decode throughput (bottom) at \QF{}, with and without an active
 cooler, on the same board, artefacts and protocol (60 trials each). Dashed lines: the 1,100~ms
-decode allowance and the 20~tokens/s throughput floor.\AuditID{M-13}}
+decode allowance and the 20~tokens/s throughput floor.}
 \label{fig:thermal}
 \end{figure}
 
@@ -582,14 +674,25 @@ configurations answer \texttt{unknown} on 60.7\% to 81.3\% of the inputs. Pooled
 test sets and six configurations, the safe-failure rate is 0.0530 (28 of 528 errors), and no
 configuration--split cell exceeds 0.1579, against a target of $\geq$~0.70. Of the 28 safe failures,
 24 are the model emitting \texttt{hover}, three are the validator replacing an incomplete
-\texttt{formation} command with a hold, and one is the model emitting \texttt{unknown}.
+\texttt{formation} command with a hold, and one is the model emitting \texttt{unknown}.\added[id=PR]{ The
+false-command rate depends on the source. For Qwen2.5-0.5B at \QF{} it is 3 of 38 assistant-style
+queries, 12 of 37 unsupported requests, 3 of 37 recogniser outputs on noise and 20 of 38 truncated
+fragments, and truncated fragments are the largest source for every configuration (19--22 of 38).
+A fragment such as ``move north'' is a command missing its slots, so the pooled rate reflects the
+mix of sources chosen for the set; it is a stress-test rate, not an estimate of the rate in
+operation.}\chcomment[id=PR]{P10}
 
 On the two in-domain test sets the six configurations make 282 errors, and \texttt{unknown}
 appears once in 2,640 in-domain decodes. Of the 282 errors, 240 (85.1\%) have the right intent and
 a wrong parameter, 39 (13.8\%) have a wrong but executable intent, and 3 (1.1\%) resolve to a safe
 action, so 98.9\% would dispatch an executable command. The largest single class is a sign error on
 the yaw angle: 114 errors (40.4\%) would turn the swarm through the requested angle in the opposite
-direction.
+direction.\added[id=PR]{ The schema encodes a counter-clockwise turn as a positive yaw. On the golden set the sign
+errors fall on the 12 rotation items phrased ``clockwise'' or ``right'': Qwen2.5-0.5B fails 11 of
+them and Llama-3.2-1B all 12, whereas neither fails any of the 5 items phrased ``counter-clockwise''
+or ``left'', or the 2 that say ``minus''. In training, 63 of the 120 rotation pairs are phrased
+counter-clockwise or left, all with a positive yaw, against 26 phrased clockwise or right, all but
+one with a negative yaw.}\chcomment[id=PR]{P9}
 
 \subsection{Selection rule}
 \label{sec:res-selection}
@@ -598,7 +701,7 @@ direction.
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_pareto.pdf}
 \caption{Golden-set EM against language-model p95 for the three \QF{} configurations on the cooled
-Raspberry Pi~5; filled markers are non-dominated.\added[id=AU]{ Point labels give the p95 and the peak resident memory of the language-model process.}\AuditID{M-28} Solid line: the 1,350~ms language-model
+Raspberry Pi~5; filled markers are non-dominated. Point labels give the p95 and the peak resident memory of the language-model process. Solid line: the 1,350~ms language-model
 allowance, measured on the same quantity as the axis; dashed: the 2,500~ms end-to-end budget, of
 which the axis measures only part; dotted: the 0.85 EM threshold. The \QE{} artefacts were not
 timed and are not plotted.}
@@ -609,8 +712,8 @@ Figure~\ref{fig:pareto} places the three timed configurations against the constr
 configuration is shown to satisfy both constraints of the selection rule. The memory ceiling applies to
 the full stack, which was not measured; the language-model process alone uses 0.55--1.63~GiB, about
 35\% or more below the ceiling. The end-to-end budget was measured for Qwen2.5-0.5B only, by the
-latency experiment of the companion paper~\citep{companion}: its p95\added[id=AU]{, measured from the endpointer's end-of-utterance decision,} is 3,122~ms over 226 speech
-segments\added[id=AU]{ (3,602~ms when the endpointing wait is included)},\chcomment[id=AU]{X-01} 622~ms (25\%) above the budget. The shortest speech-recognition time in that experiment
+latency experiment of the companion paper~\citep{companion}: its p95, measured from the endpointer's end-of-utterance decision, is 3,122~ms over 226 speech
+segments (3,602~ms when the endpointing wait is included), 622~ms (25\%) above the budget. The shortest speech-recognition time in that experiment
 is 1,063~ms, so Llama-3.2-1B's end-to-end p95 is at least 3,346~ms. SmolLM2-360M was not measured
 end to end.
 
@@ -628,11 +731,14 @@ Llama-3.2-1B is dominated on the point estimates.
 \section{Discussion}
 \label{sec:discussion}
 
-\paragraph{\replaced[id=AU]{On the golden set, parameter count}{Parameter count} does not order these models.}\chcomment[id=AU]{M-21} The 0.49~B model is at least as accurate
-as the 1.24~B model on the golden set. With only five discordant pairs, the smallest attainable
+\paragraph{\replaced[id=PR]{Parameter count does not order the two larger models.}{On the golden set, parameter count does not order these models.}} \replaced[id=PR]{On the golden set the
+0.49~B model scored 2.5\pp{} above the 1.24~B model, on five discordant items; on the synthetic set
+the two tied, and on the out-of-domain set the larger model was ahead by 6.7\pp{}. Neither model is
+shown to be the more accurate.}{The 0.49~B model is at least as accurate
+as the 1.24~B model on the golden set.}\chcomment[id=PR]{P5} With only five discordant pairs, the smallest attainable
 exact $p$ is 0.0625, so no split of them could have reached the corrected $\alpha$; the test could not
 have established a difference, and its result does not establish equivalence. At matched size, the
-family difference (6.5\pp{}) is \replaced[id=AU]{of the same order as the 15.0\pp{} span across the whole 3.4-fold size range, whose endpoints also differ in family}{more than 40\% of the span across the whole 3.4-fold size range (15.0\pp{})}.\chcomment[id=AU]{M-08} For a narrow task in the
+\added[id=PR]{exploratory }family difference (6.5\pp{}) is of the same order as the 15.0\pp{} span across the whole 3.4-fold size range, whose endpoints also differ in family. For a narrow task in the
 sub-1.5~B range, choosing a model by size alone would have selected a slower model with no
 established accuracy gain. Two qualifications apply. Each family is represented by one model at
 one size, so a family effect cannot be expressed as a share of a size effect. And the
@@ -644,19 +750,23 @@ moving from Qwen2.5-0.5B to SmolLM2-360M saves 178~ms of p95 and 0.13~GiB of mem
 17.5\pp{} of EM, a significant difference.
 
 \paragraph{What the grammar adds after fine-tuning.} Without the grammar, the fine-tuned models left
-the format once in 3,540 decodes, and EM moved by 0.17\pp{} in the grammar's favour. The grammar's
+the format once in 3,540 decodes, and EM moved by 0.17\pp{} in the grammar's favour.\added[id=PR]{ The 3,540
+decodes are 590 items decoded by six related artefacts, so they bound the malformed rate of one
+artefact at about 0.5\% rather than at 1 in 3,540.}\chcomment[id=PR]{P10} The grammar's
 measurable contribution to validity on these test sets is that single decode. Its main value,
 however, is not a rate. Under the grammar, no output that violates the schema is reachable for any
 input, and no finite test set can measure a property of that kind. The one failure fell on an
 out-of-domain query, where the training distribution ends, which is where a guarantee matters.
-Bounding the grammar \replaced[id=AU]{also mattered}{mattered as much as having one}.\chcomment[id=AU]{M-20} An unbounded identifier list caused the
+Bounding the grammar also mattered. An unbounded identifier list caused the
 truncation loop of Section~\ref{sec:intro}, and the bounded grammar makes it unreachable. The
 documented costs of constrained decoding, distribution distortion~\citep{park2024} and lower
 accuracy on reasoning tasks~\citep{tam2024}, do not appear in EM here. This is consistent with
 the finding of \citet{tam2024} for classification-like tasks: a single-turn schema with ten intents is closer
 to classification than to multi-step reasoning. Prior grammar studies used models that were not
-fine-tuned to the format~\citep{geng2023,tam2024}. For a fine-tuned model, our data suggest the
-grammar is cheap insurance rather than a source of accuracy.
+fine-tuned to the format~\citep{geng2023,tam2024}. For a fine-tuned model, \replaced[id=PR]{our data detect no
+accuracy effect of the grammar at this sample size, in either direction, on inputs like the
+training distribution; what it adds is the guarantee.}{our data suggest the
+grammar is cheap insurance rather than a source of accuracy.}\chcomment[id=PR]{P10}
 
 \paragraph{Deployment cost in context.} The fp16-to-deployed delta is not comparable with the
 isolated quantisation losses reported for larger models~\citep{kurtic2025,kurt2026}, because it
@@ -681,24 +791,34 @@ have learned to classify request types rather than to signal uncertainty. This m
 misrecognised command still reads as a supported request, and nearly every in-domain error
 (98.9\%) would dispatch an executable command. The dominant error, a sign error on the yaw angle,
 illustrates why later validation layers cannot compensate: both signs are legal values, so nothing
-within a single command distinguishes the intended direction from its opposite. One untested
+within a single command distinguishes the intended direction from its opposite. \replaced[id=PR]{The error is
+systematic rather than random (Section~\ref{sec:res-ood}): the two leading models produce a negative
+yaw almost only when the transcript contains ``minus'', and turn the wrong way on 23 of their 24
+decodes of a clockwise or right phrasing.
+Training phrases a rotation counter-clockwise or left more than twice as often as clockwise or
+right, and the system prompt does not state the sign convention, so the models appear to have
+learned a positive yaw as the default. A schema that names the direction instead of signing the
+angle, or training data balanced across the two directions, would test this directly; because
+this one pattern holds most of the errors of both leading models, the outcome would also bear on
+their ranking.}{One untested
 explanation is that the schema encodes direction as a sign, so a spoken ``clockwise'' must become
-a minus sign that the transcript never contains. The training data teach \texttt{unknown} through
+a minus sign that the transcript never contains.}\chcomment[id=PR]{P9} The training data teach \texttt{unknown} through
 81 out-of-scope utterances and through none in which a supported command is made unreadable. Two
-remedies follow: a confidence gate that routes low-probability decodes to \texttt{unknown}, and
+remedies follow\added[id=PR]{ for abstention}: a confidence gate that routes low-probability decodes to \texttt{unknown}, and
 training pairs that map degraded commands to \texttt{unknown}. Neither was implemented here.
 
 \paragraph{Limitations.} All accuracy figures are measured on reference transcripts, so they
-overstate what the pipeline achieves from audio\replaced[id=AU]{: through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts}{; the word error rate on the golden speaker is
-23.3\% through the deployed pipeline}~\citep{companion}.\chcomment[id=AU]{M-06} The golden set is one \added[id=AU]{non-native English }speaker in one session\replaced[id=AU]{; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its}{, and its} 200 items are paraphrases\chcomment[id=AU]{M-05}
-of 12 command patterns, so the effective sample is smaller than 200 and the intervals and
-$p$-values are optimistic. The golden and synthetic test sets are drawn from the same 12 held-out
+overstate what the pipeline achieves from audio: through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts~\citep{companion}. The golden set is one non-native English speaker in one session; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its 200 items are paraphrases
+of 12 command patterns, so the effective sample is smaller than 200\replaced[id=PR]{: the accuracy intervals
+resample patterns, but 12 patterns make them approximate, and the McNemar $p$-values remain
+item-level and optimistic.}{ and the intervals and
+$p$-values are optimistic.}\chcomment[id=PR]{P3} The golden and synthetic test sets are drawn from the same 12 held-out
 families, so agreement between them shows consistency on those patterns rather than two
 independent confirmations. Labels are generated rather than independently annotated. Each model was trained once,
 with one seed and a fixed budget; the control differs in system-prompt rendering and training
 session, and GPU training is not bit-reproducible across sessions~\citep{pytorchrepro}. Timing comes
-from one board and one runtime build, with a cached prefill\added[id=AU]{, and from 60 repetitions per configuration, so a margin as narrow as the selected model's decode p95 (1,033~ms against 1,100~ms) could move with a few more slow trials}.\chcomment[id=AU]{M-04} Only the selected configuration was
-measured end to end, and the full-stack memory of no configuration was measured. \added[id=AU]{Only two GGUF quantisation levels were examined; lower bit widths and other quantisation methods were not measured. }\chcomment[id=AU]{M-18}Finally, the
+from one board and one runtime build, with a cached prefill, and from 60 repetitions per configuration, so a margin as narrow as the selected model's decode p95 (1,033~ms against 1,100~ms) could move with a few more slow trials. Only the selected configuration was
+measured end to end, and the full-stack memory of no configuration was measured. Only two GGUF quantisation levels were examined; lower bit widths and other quantisation methods were not measured. Finally, the
 schema is small: single-turn, ten intents and a bounded slot vocabulary. Whether the ordering of
 models or the grammar's low cost carries over to richer schemas is not established.
 
@@ -707,14 +827,19 @@ models or the grammar's low cost carries over to richer schemas is not establish
 \label{sec:conclusion}
 
 Among three fine-tuned small language models quantised for CPU-only inference on a Raspberry~Pi~5,
-Qwen2.5-0.5B at \QF{} \replaced[id=AU]{is the configuration the selection rule retains for}{offers the best accuracy--efficiency trade-off for} grammar-constrained
-command parsing: 0.935 golden-set EM at 27.93~tokens/s on a cooled board.\added[id=AU]{ It and SmolLM2-360M are the two non-dominated points, and the rule selects between them on accuracy alone.}\chcomment[id=AU]{M-02} On the golden set it is
+Qwen2.5-0.5B at \QF{} is the configuration the selection rule retains for grammar-constrained
+command parsing: 0.935 golden-set EM at 27.93~tokens/s on a cooled board. It and SmolLM2-360M are the two non-dominated points, and the rule selects between them on accuracy alone. On the golden set it \replaced[id=PR]{scored 2.5\pp{} above a
+model 2.5 times its size (0.910; five discordant items, not significant), a lead that the
+out-of-domain set reverses, and was clearly more accurate than the smallest candidate, also when
+the command patterns are resampled.}{is
 at least as accurate as a model 2.5 times its size (0.910, a difference that is not significant),
-and significantly more accurate than the smallest candidate. A bounded
-grammar guarantees structural validity at no measured accuracy cost, and the deployment pipeline
-from fp16 to the quantised artefact costs no established accuracy. Two results qualify the choice:
+and significantly more accurate than the smallest candidate.}\chcomment[id=PR]{P5, P3} A bounded
+grammar guarantees structural validity at no \added[id=PR]{detectable }accuracy cost, and the deployment pipeline
+from fp16 to the quantised artefact costs no established accuracy. \replaced[id=PR]{Most remaining golden-set errors
+of the two leading models are clockwise turns parsed as counter-clockwise, consistent with an
+imbalance in how the training data phrase a rotation. Two further results}{Two results} qualify the choice:
 its end-to-end latency exceeds the 2,500~ms budget, and no configuration meets the false-command or
-safe-failure targets. Future work will add a log-probability confidence gate and training pairs for
+safe-failure targets.\chcomment[id=PR]{P9} Future work will add a log-probability confidence gate and training pairs for
 unreadable commands to address abstention, and will measure the smaller SmolLM2-360M end to end to
 complete the frontier at its fast end.
 
@@ -734,12 +859,15 @@ The command schema and grammar, the dataset splits including the golden-set reco
 training configurations, the evaluation harness, the raw measurement files and the scripts that
 produce every table and figure in this article are publicly available at
 \url{https://github.com/TayebKahia/voice-swarm-edge-}. The deployed \QF{} artefact is distributed
-through the repository's releases.
+through the repository's releases.\added[id=PR]{ Code is released under the MIT licence and the authors' data, recordings and results under
+CC~BY~4.0. The recordings are of the first author, who consents to their release. Third-party
+corpora (DREGON, ESC-50, Common Voice) are not redistributed; the published scripts
+regenerate the noise-mixed audio from them under their own licences, and model
+weights keep the licences of their base models.}\chcomment[id=PR]{P1}
 
 \section*{Declaration of generative AI and AI-assisted technologies in the writing process}
-During the preparation of this work the authors used Claude (Anthropic) \replaced[id=AU]{in order to assist with the writing of the manuscript}{for writing assistance}.\chcomment[id=AU]{X-02}
-\replaced[id=AU]{The authors reviewed the content and take full responsibility for the publication.}{After using this tool, the authors reviewed and edited the content as needed and take full
-responsibility for the content of the publication.}
+During the preparation of this work the authors used Claude (Anthropic) in order to assist with the writing of the manuscript.
+The authors reviewed the content and take full responsibility for the publication.
 
 \bibliographystyle{cas-model2-names}
 \bibliography{references}
