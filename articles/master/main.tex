@@ -77,7 +77,9 @@ processor. We fine-tune three small language models of 0.36 to 1.24 billion para
 them to 8-bit and 4-bit formats, decode them under a bounded grammar, and time them on a
 Raspberry Pi~5. On 200 commands read aloud and scored on reference transcripts, Qwen2.5-0.5B in
 the 4-bit format reaches an exact match of 0.935 and Llama-3.2-1B 0.910, a difference that is not
-significant and reverses on out-of-domain input; both exceed SmolLM2-360M (0.760). Most of the
+significant and reverses on out-of-domain input; both exceed SmolLM2-360M (0.760).\added[id=PR]{ Parsing the
+board's speech-recognised transcripts of the same recordings, every model loses 24 to 29 points in
+clean audio, and the order is unchanged at every noise level.}\AuditID{S4} Most of the
 two leading models' golden-set errors are one mistake: a clockwise turn parsed as
 counter-clockwise. Quantisation and the grammar cost no detectable accuracy (at most 1.5 points),
 and without the grammar one output in 3,540 is malformed. On a cooled board Qwen2.5-0.5B decodes
@@ -162,7 +164,8 @@ selection. The contributions are:
 \item On 590 test items, fine-tuned models of 0.49 and 1.24~B parameters are not separated (0.935
   against 0.910 on the golden set, with the order reversed out of domain), while both exceed a
   0.36~B model by 15 to 17.5 points. Uncertainty is reported at the level of the command pattern,
-  the unit that was sampled.
+  the unit that was sampled.\added[id=PR]{ On speech-recognised transcripts the order holds, and every model
+  loses about a quarter of its accuracy.}\chcomment[id=PR]{S4}
 \item The deployment pipeline, from the fine-tuned model at 16-bit precision to the 4-bit artefact
   under the grammar, costs at most three golden items net. The grammar changes no artefact's
   accuracy by more than two items and removes the only malformed output in 3,540 decodes.
@@ -306,8 +309,8 @@ MASSIVE~\citep{massive}, 37 requests for capabilities the schema lacks, 38 trunc
 and silence, of which 12 were harvested from \texttt{whisper.cpp} and 25 written to imitate
 them. Apart from those 12, the authors wrote every out-of-domain item.}{:
 assistant-style queries, unsupported requests, truncated fragments, and 12 recogniser outputs on
-noise and silence.}\chcomment[id=PR]{P10} A 240-pair validation set selects checkpoints. Every accuracy figure in this
-article takes the reference transcript as input. The recogniser's word error rate on the golden
+noise and silence.}\chcomment[id=PR]{P10} A 240-pair validation set selects checkpoints. \replaced[id=PR]{Except in Section~\ref{sec:res-speech}, every}{Every} accuracy figure in this
+article takes the reference transcript as input.\chcomment[id=PR]{S4} The recogniser's word error rate on the golden
 speaker is 23.1\% (95\% confidence interval, CI, 20.3--25.9) for the recogniser alone without its domain prompt\replaced[id=PR]{;
 accuracy from audio, through the full speech pipeline, is the subject of the companion
 paper~\citep{companion}.}{, and
@@ -676,6 +679,56 @@ resampled (Qwen2.5-0.5B minus SmolLM2-360M, +10.0 to +25.0\pp{})}. No
 \QE{}--\QF{} pair differs significantly. On the synthetic set SmolLM2-360M scores 0.812 at both
 precisions, and the two artefacts disagree on 24 items, split 12 to 12.
 
+\subsection{\added[id=PR]{Accuracy from recognised speech (exploratory)}}
+\label{sec:res-speech}
+
+\AuditAddedBlock{%
+\begin{table*}[t]
+\caption{The six deployed artefacts on the board's speech-recognised transcripts of the 200 golden
+recordings, clean and under rotor noise~\citep{companion}, parsed under the grammar on the
+workstation. CRR: command recognition rate. EM: the same artefact on the reference transcripts.
+95\% CI: percentile bootstrap over the 12 command patterns. $b$/$c$: items only the row's artefact /
+only the selected artefact recognises in clean audio; $p$: exact McNemar, item-level, exploratory
+family of five ($\alpha = 0.01$). The selected artefact's CRR at 10 and 5~dB is 0.590 and 0.485 when
+decoded on the board.\AuditID{S4}}
+\label{tab:speech}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccccc@{}}
+\toprule
+& & & \multicolumn{2}{c}{Clean} & \multicolumn{4}{c}{CRR under rotor noise} & \multicolumn{2}{c}{Against selected, clean} \\
+\cmidrule(lr){4-5}\cmidrule(lr){6-9}\cmidrule(lr){10-11}
+Model & Quant. & EM & CRR & 95\% CI & 20 dB & 15 dB & 10 dB & 5 dB & $b$/$c$ & $p$ \\
+\midrule
+SmolLM2-360M & \QE{} & 0.790 & 0.525 & [0.369, 0.690] & 0.470 & 0.465 & 0.425 & 0.370 & 4/37 & $1.0\times10^{-7}$ \\
+             & \QF{} & 0.760 & 0.520 & [0.382, 0.667] & 0.485 & 0.445 & 0.420 & 0.375 & 4/38 & $5.7\times10^{-8}$ \\
+Qwen2.5-0.5B & \QE{} & 0.930 & 0.685 & [0.577, 0.791] & 0.675 & 0.650 & 0.595 & 0.500 & 1/2 & 1.00 \\
+             & \QF{} & \textbf{0.935} & \textbf{0.690} & [0.577, 0.794] & 0.675 & 0.650 & 0.595 & 0.495 & -- & -- \\
+Llama-3.2-1B & \QE{} & 0.915 & 0.655 & [0.551, 0.760] & 0.635 & 0.630 & 0.585 & 0.470 & 5/12 & 0.14 \\
+             & \QF{} & 0.910 & 0.620 & [0.514, 0.730] & 0.610 & 0.605 & 0.570 & 0.465 & 4/18 & 0.0043 \\
+\bottomrule
+\end{tabular*}
+\end{table*}}
+
+\added[id=PR]{The companion paper passes the 200 golden recordings through the deployed speech pipeline on
+the board, clean and with rotor noise mixed at 20, 15, 10 and 5~dB, and parses the transcripts with
+the selected artefact only~\citep{companion}. To test whether the ranking survives recognition
+errors, each of the six artefacts parsed the same per-segment transcripts under the grammar, and each
+utterance was scored by the companion paper's rule: it counts as recognised only if every command it
+dispatched is correct. Decoding ran on the workstation; for the selected artefact it reproduced the
+board's outcome on every utterance in clean audio and at 20 and 15~dB, and differed on one and two
+utterances at 10 and 5~dB. The analysis was added after the results.}
+
+\added[id=PR]{In clean audio every artefact lost 24 to 29 points between reference and recognised transcripts
+(Table~\ref{tab:speech}), more than any difference among the four leading artefacts, and the order of
+the three models was the same at every noise level. Qwen2.5-0.5B's two precisions were not
+separated at any level. At \QF{} in clean audio it was ahead of Llama-3.2-1B by 7.0\pp{}, on 18
+against 4 discordant items ($p = 0.0043$); resampling the patterns, the difference has a 95\%
+interval of +2.0 to +12.4\pp{}, and the net gain is spread over seven of the 12 patterns. Against
+Llama-3.2-1B at \QE{} the clean difference was 3.5\pp{} ($-0.5$ to +8.0), and from 15~dB downwards
+neither Llama-3.2-1B artefact was separated from the selected one (exact $p \geq 0.049$).
+SmolLM2-360M stayed 12.0 to 20.5 points behind the selected artefact at every level (exact
+$p < 0.001$ each).}\chcomment[id=PR]{S4}
+
 \subsection{Latency, throughput and memory}
 \label{sec:res-latency}
 
@@ -817,7 +870,10 @@ the two tied, and on the out-of-domain set the larger model was ahead by 6.7\pp{
 shown to be the more accurate.}{The 0.49~B model is at least as accurate
 as the 1.24~B model on the golden set.}\chcomment[id=PR]{P5} With only five discordant pairs, the smallest attainable
 exact $p$ is 0.0625, so no split of them could have reached the corrected $\alpha$; the test could not
-have established a difference, and its result does not establish equivalence. At matched size, the
+have established a difference, and its result does not establish equivalence.\added[id=PR]{ From recognised
+speech the smaller model was ahead at \QF{} in clean audio by 7.0\pp{}, also when the patterns are
+resampled, but not at \QE{} or from 15~dB downwards (Section~\ref{sec:res-speech}); that analysis is
+exploratory and one speaker's, so it does not settle the comparison either.}\chcomment[id=PR]{S4} At matched size, the
 \added[id=PR]{exploratory }family difference (6.5\pp{}) is of the same order as the 15.0\pp{} span across the whole 3.4-fold size range, whose endpoints also differ in family. For a narrow task in the
 sub-1.5~B range, choosing a model by size alone would have selected a slower model with no
 established accuracy gain. Two qualifications apply. Each family is represented by one model at
@@ -890,9 +946,10 @@ a minus sign that the transcript never contains.}\chcomment[id=PR]{P9} The train
 remedies follow\added[id=PR]{ for abstention}: a confidence gate that routes low-probability decodes to \texttt{unknown}, and
 training pairs that map degraded commands to \texttt{unknown}. Neither was implemented here.
 
-\paragraph{Limitations.} All accuracy figures are measured on reference transcripts, so they
-overstate what the pipeline achieves from audio: \replaced[id=PR]{the companion paper reports a command recognition rate of
-0.690 for the selected configuration on the same recordings in clean audio~\citep{companion}.}{through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts~\mbox{\citep{companion}}.}\chcomment[id=PR]{P2} The golden set is one non-native English speaker in one session; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its 200 items are paraphrases
+\paragraph{Limitations.} \replaced[id=PR]{Apart from Section~\ref{sec:res-speech}, accuracy figures}{All accuracy figures} are measured on reference transcripts, so they
+overstate what the pipeline achieves from audio: \replaced[id=PR]{from the board's recognised transcripts every
+artefact loses 24 to 29 points in clean audio, and that comparison rests on one recogniser and the
+same single speaker.}{through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts~\mbox{\citep{companion}}.}\chcomment[id=PR]{P2, S4} The golden set is one non-native English speaker in one session; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its 200 items are paraphrases
 of 12 command patterns, so the effective sample is smaller than 200\replaced[id=PR]{: the accuracy intervals
 resample patterns, but 12 patterns make them approximate, and the McNemar $p$-values remain
 item-level and optimistic.}{ and the intervals and
@@ -917,7 +974,8 @@ model 2.5 times its size (0.910; five discordant items, not significant), a lead
 out-of-domain set reverses, and was clearly more accurate than the smallest candidate, also when
 the command patterns are resampled.}{is
 at least as accurate as a model 2.5 times its size (0.910, a difference that is not significant),
-and significantly more accurate than the smallest candidate.}\chcomment[id=PR]{P5, P3} A bounded
+and significantly more accurate than the smallest candidate.}\chcomment[id=PR]{P5, P3}\added[id=PR]{ Parsed from
+recognised speech, every model lost about a quarter of its accuracy and the order held.}\chcomment[id=PR]{S4} A bounded
 grammar guarantees structural validity at no \added[id=PR]{detectable }accuracy cost, and the deployment pipeline
 from fp16 to the quantised artefact costs no established accuracy. \replaced[id=PR]{Most remaining golden-set errors
 of the two leading models are clockwise turns parsed as counter-clockwise, consistent with an

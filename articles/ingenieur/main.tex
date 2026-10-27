@@ -78,7 +78,8 @@ transcribes each utterance and parses it with a fine-tuned small language model 
 reflex path, a two-class keyword spotter, publishes a hold or an abort without transcription and
 cancels any parse in progress. A two-test rule admits to the reflex path only commands whose delay
 changes the outcome and whose false trigger can only make the swarm do less: two of ten. On recorded audio, each of 39 keyword takes that met a parse cancelled
-it, with no class confusion. Both paths miss their latency budgets: the reflex path takes 545--556~ms
+it, with no class confusion.\added[id=PR]{ Through the parse path alone, the same takes waited 612~ms at the
+median for the end of speech, and 3 of 40 stops became a formation command.}\AuditID{P12} Both paths miss their latency budgets: the reflex path takes 545--556~ms
 at the 95th percentile against 150~ms, almost all of it before the board's 5--18~ms, and the parse
 path 3,122~ms against 2,500~ms. Under rotor
 noise, command recognition falls from 0.690 to 0.590 at 10~dB, and almost no failure resolves to
@@ -117,7 +118,8 @@ stage of the speech chain costs on the order of a second.
 
 That cost is acceptable for a formation change and not for a stop. A parser that transcribes and
 interprets an utterance cannot start until an endpointer has decided that the operator has
-finished speaking, and that wait alone is longer than a stop can afford. Routing a stop through the
+finished speaking, and that wait alone is longer than a stop can afford\added[id=PR]{ (612~ms at the median after
+the end of a recorded stop phrase, Section~\ref{sec:res-single})}\chcomment[id=PR]{P12}. Routing a stop through the
 same path as every other command therefore delays it by the whole cost of interpretation. Routing it
 through a faster path that does not interpret speech raises a different problem: a false trigger on
 such a path publishes a well-formed command that no later check can distinguish from a spoken one.
@@ -444,6 +446,11 @@ latencies and counts use the first pass of each take, with exact (Clopper--Pears
 counts. Recovery, which waits on the language-model server's once-a-second poll, varies between
 passes and uses both. Latency percentiles carry distribution-free 95\% intervals from order
 statistics; when the sample cannot bound a p95 from above, only its lower bound is given.}\chcomment[id=PR]{P16, P17}
+\added[id=PR]{As a single-path baseline, the 40 takes were also replayed once through the parse path with the
+reflex path removed, and each was scored, by the rule of the acoustic-robustness experiment, against
+a hold or an abort. The endpointing delay of this baseline, measured from the same offset anchor,
+is set by the audio and the endpointer, not by the processor; its later stages were timed on an
+x86 workstation, not on the board.}\chcomment[id=PR]{P12: re-time on the Pi}
 
 \paragraph{Keyword-spotter evaluation.} The heads were scored on held-out recordings streamed in
 80~ms frames with the runtime's debounce: 300 synthetic test takes per class, 0.429~h of held-out
@@ -451,7 +458,12 @@ ambient speech for false accepts, and a stress stream of authored near-miss phra
 on the author's voice were scored on the 40 recorded takes. Both keyword criteria are rates
 estimated from few events, so each is judged by its 95\% interval (exact binomial for false
 rejects, Poisson for false accepts): met if the whole interval lies within the budget, missed if it
-lies wholly outside, and otherwise \emph{not demonstrated}.
+lies wholly outside, and otherwise \emph{not demonstrated}.\added[id=PR]{ Detection delay was also measured across
+the threshold grid against three estimates of the keyword's end: the exact end sample, known for
+575 of the 600 synthetic test takes; and, on the 40 recorded takes, the capture tool's energy bound,
+which is the latency experiment's anchor, and the end of the last 32~ms window in which Silero's
+speech probability reaches 0.5. This curve was measured after the threshold had been fixed and was
+not used to choose it.}\chcomment[id=PR]{P15}
 
 \paragraph{Acoustic-robustness experiment.} The 200 golden recordings were passed through the parse
 path once clean and once at each of 20, 15, 10 and 5~dB signal-to-noise ratio, with rotor noise from
@@ -566,6 +578,30 @@ fired once, a \texttt{hover} during a landing command; the offline scoring of th
 Preemption recovery, measured until the language-model server reported its slot idle, missed its
 budget at 1,195~ms (p95; median 601~ms; maximum 1,505~ms) against 300~ms. The cancelled request itself returned within 6.5~ms of the trigger at p95.
 
+\subsection{\added[id=PR]{Single-path baseline}}
+\label{sec:res-single}
+
+\added[id=PR]{Replayed through the parse path alone, 37 of the 40 stop takes were recognised (miss rate 0.075,
+95\% interval 0.016--0.204). The recogniser transcribed two abort takes as ``swarma boards'' and one
+hold take as ``swarm, walled'', and the parser turned all three into a formation command; none
+resolved to a hold. The reflex path had stopped all three with the right class, and the one take it
+missed, a hold, was recognised by the parse path. Before the parse path could start, the endpointer
+declared each utterance over 612~ms after the keyword offset at the median (95\% interval 600--652~ms)
+and 742~ms at p95: the wait alone exceeds the reflex path's whole p95 of 545~ms from the same anchor.
+On the workstation, the single path took 2,271~ms from the keyword offset to the applied command at
+the median and 2,768~ms at p95. On the board, the parse path's stages after endpointing were measured
+only on the ten golden utterances whose command is a bare hold or abort, at a median of 1,902~ms;
+adding the shortest endpointing delay observed here (320~ms) to the shortest of those (1,748~ms) gives
+an estimate of 2.1~s, not a measurement, for a stop routed through the parse path on the board.}
+
+\added[id=PR]{Read together, the two runs show a case that the ordering rule does not cover. On each of the 39
+takes the reflex path detected, its message was published before the endpointer had accepted the
+utterance, so the parse of the stop phrase itself reserves a later sequence number and is applied
+after the stop. Parsed correctly, it repeats the stop. On the hold take that became a formation
+command, it would have replaced the hold with a formation change about two seconds later; after the
+two aborts, the state machine would have rejected it. This combined behaviour is inferred, not
+measured: the latency experiment did not pass the keyword takes to the parse path.}\chcomment[id=PR]{P12}
+
 \subsection{Keyword spotter}
 \label{sec:res-kws}
 
@@ -586,9 +622,45 @@ golden-set recordings (0.304~h) produced none. A stress stream of authored near-
 34 false accepts in 0.100~h, 31 of them on the hold head; it is a stress condition, not an operating rate, and no criterion is judged on it. On the synthetic test takes, rendered by the three voices used in training, the
 false-reject rate was 0.027 for hold and 0.007 for abort; on the author's 40 recorded takes it was
 0.050 [0.001, 0.249] for hold and 0.000 [0.000, 0.168] for abort, against a target of at most 0.10,
-so this criterion is not demonstrated either. Measured from the synthetic takes' own anchor, the
-spotter's delay was 131--188~ms at p95. The curve is flat in false accepts above a threshold of
+so this criterion is not demonstrated either.\deleted[id=PR]{ Measured from the synthetic takes' own anchor, the
+spotter's delay was 131--188~ms at p95.} The curve is flat in false accepts above a threshold of
 0.88: the single test false accept survives every threshold in that range.
+
+\AuditAddedBlock{%
+\begin{table}
+\caption{Keyword-spotter delay against the common threshold (ms, nearest-rank p95 unless marked).
+Exact: from the known end sample of 575 synthetic test takes. Energy and Silero: from two estimates
+of the keyword's end on the 40 recorded takes; energy is the anchor of Table~\ref{tab:latency}. False
+accepts per hour on the author's 0.304~h of golden-set recordings and on the 0.429~h ambient
+stream. Bold: operating threshold.\AuditID{P15}}
+\label{tab:delay}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lrrrrrr@{}}
+\toprule
+& Exact & \multicolumn{2}{c}{Energy} & Silero & \multicolumn{2}{c}{False accepts/h} \\
+\cmidrule(lr){3-4}\cmidrule(lr){6-7}
+Threshold & p95 & p50 & p95 & p95 & Golden & Ambient \\
+\midrule
+0.5   &  85 &  80 & 230 & 152 & 42.8 & 16.3 \\
+0.9   &  94 & 140 & 230 & 152 & 26.3 &  2.3 \\
+0.98  & 110 & 150 & 260 & 168 & 13.2 &  2.3 \\
+0.99  & 113 & 160 & 470 & 392 & 13.2 &  2.3 \\
+\textbf{0.999} & 152 & 190 & 540 & 424 &  0.0 &  2.3 \\
+\bottomrule
+\end{tabular*}
+\end{table}}
+
+\added[id=PR]{Table~\ref{tab:delay} gives the spotter's delay across the threshold grid. From the exact end
+sample, the p95 at the operating threshold was 152~ms (95\% interval 131--216~ms; hold 179~ms, abort
+131~ms), and 110~ms at 0.98. On the recorded takes, from the energy anchor, it was 540~ms at the
+operating threshold, 260~ms at 0.98 and 230~ms from 0.9 downwards; no threshold in the grid brought it
+within 150~ms, and the lower bound of its interval was at least 200~ms at every threshold. The two
+estimates of a recorded keyword's end disagreed by more than the budget: Silero's end came a median
+116~ms after the energy bound (range $-184$ to $+296$~ms), and measured from it the p95 at the
+operating threshold was 424~ms. Lower thresholds traded delay for false accepts on the operator's own
+speech: the golden-set recordings produced none at 0.999, one at 0.998, four at 0.98 and eight at
+0.9. The false-reject rate on the recorded takes was 0.025 (1 of 40) from 0.998 upwards and zero
+below.}\chcomment[id=PR]{P15}
 
 \subsection{Acoustic robustness}
 \label{sec:res-acoustic}
@@ -740,14 +812,29 @@ reflex latency without delaying any audio frame. The 150~ms budget was neverthel
 and the measurement locates the miss in the 540~ms before publication that the spotter's decision
 delay, the 80~ms frame quantisation and the imprecision of the offset anchor share, not in the
 board's \replaced[id=PR]{5--18}{6--18}~ms.\chcomment[id=PR]{P16} The core allocation therefore did what it was designed to do, and reducing the
-reflex latency requires changing the spotter, not the board. The spotter's delay on the synthetic
+reflex latency requires changing the spotter, not the board. \replaced[id=PR]{The delay--threshold curve
+(Table~\ref{tab:delay}) splits the 540~ms further. Measured from an exact anchor, the spotter's own
+p95 is 152~ms, about the budget; on the recorded takes most of the excess appears only above a
+threshold of 0.98, where the heads' scores saturate, and the two estimates of where a recorded
+keyword ends differ by up to 300~ms, twice the budget. Lowering the threshold would shorten the
+delay but raise false accepts on the operator's own commands, and it would not reach 150~ms at p95
+on the energy anchor at any threshold tested. A new operating point would therefore have to be
+chosen on validation data and re-measured on new takes against an anchor more precise than either
+estimate, such as a forced alignment.}{The spotter's delay on the synthetic
 takes (131--188~ms at p95) was measured from a different anchor, so the two figures are not directly
-comparable. Recovery after preemption is limited mainly by the
+comparable.}\chcomment[id=PR]{P15} Recovery after preemption is limited mainly by the
 language-model server, which registers a closed connection by polling once per second; its p95 and
 maximum exceed that period, so the polling explains only part of it, and an explicit slot
-cancellation is the first change to measure. For comparison with the parse path, its p95 from the
+cancellation is the first change to measure. \replaced[id=PR]{On the same 40 takes and the same anchor, the
+parse path alone could not start before 612~ms of endpointing at the median, longer than the reflex
+path's p95, and it turned 3 of the 40 stops into a formation command (Section~\ref{sec:res-single}).
+The case for a separate path therefore rests on robustness as much as on speed, and the endpointing
+part of it does not depend on the board. The same comparison exposes a gap in the ordering rule: the
+parse of the stop phrase itself is accepted after the reflex message and can replace a hold.
+Reserving the parse-path number at the onset of speech rather than at acceptance would make that
+parse stale, at the cost of also discarding a command spoken in the same utterance as the stop.}{For comparison with the parse path, its p95 from the
 true end of speech, including the endpointing wait, was 3,602~ms, against 545~ms for the reflex path
-from the keyword offset.
+from the keyword offset.}\chcomment[id=PR]{P12}
 
 \paragraph{The parse path.} Two stages explain the 622~ms excess. Prefill without a prompt cache
 cost 751~ms against a 250~ms allowance; the deployed parser disables the cache so that its accuracy
@@ -809,7 +896,9 @@ operation was not verified by a run with networking disabled, and the live demon
 performed. Formation commands carry no speed, so the validator's 2.0~m/s ceiling does not apply to
 formation changes, while the backends allow 3~m/s; vehicle speeds were not recorded. Preemption does
 not reach utterances queued behind the one in progress, nor a trigger that arrives during
-transcription, and no reflex trial overlapped speech recognition. The state machine judges legality on a command's intent before the validator substitutes a hold, so an unvalidated command could dispatch a hold in a state where a hold is illegal; on the deployed route validation comes first, so the case does not arise there. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
+transcription, and no reflex trial overlapped speech recognition.\added[id=PR]{ The single-path baseline's stages
+after endpointing were timed on a workstation, and the interaction between a reflex stop and the
+parse of the same phrase was inferred from two separate runs rather than measured.}\chcomment[id=PR]{P12} The state machine judges legality on a command's intent before the validator substitutes a hold, so an unvalidated command could dispatch a hold in a state where a hold is illegal; on the deployed route validation comes first, so the case does not arise there. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
 to decide either keyword criterion.
 
 % =============================================================================
@@ -824,8 +913,11 @@ criterion is demonstrated and recovery after preemption missed its budget.
 A two-test membership rule restricts the reflex path to a hold and an abort, and three validation
 layers bound what a wrong command can do. The system misses its latency budgets on both paths, before the board's share on the reflex path
 and in speech recognition and uncached prefill on the parse path, and misses its recognition targets under
-rotor noise, with errors that do not become safer as noise rises. Future work will reduce the spotter's
-decision delay, cache the prompt prefix after a parity check, replace the server's polling with an
+rotor noise, with errors that do not become safer as noise rises.\added[id=PR]{ Routed through the parse path
+alone, a stop waited 612~ms at the median for the endpointer and was misrecognised in 3 of 40 takes.}\chcomment[id=PR]{P12}
+Future work will reduce the spotter's
+decision delay\added[id=PR]{ and re-measure it against a forced alignment, reserve the parse-path sequence
+number at the onset of speech}, cache the prompt prefix after a parity check, replace the server's polling with an
 explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate, build the
 link from the state machine to the controller, replace the integrator clamp with a force-level
 mechanism, and run the complete chain live, with networking disabled and on physical vehicles.
