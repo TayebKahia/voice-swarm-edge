@@ -193,3 +193,5 @@ demo_runs/
 *.abs
 *.loc
 *.soc
+# A-M2 few-shot baseline: base (not fine-tuned) weights, downloaded locally
+train/base_models/
