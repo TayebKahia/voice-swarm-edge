@@ -79,10 +79,13 @@ Raspberry Pi~5. On 200 commands read aloud and scored on reference transcripts, 
 the 4-bit format reaches an exact match of 0.935 and Llama-3.2-1B 0.910, a difference that is not
 significant and reverses on out-of-domain input; both exceed SmolLM2-360M (0.760).\added[id=PR]{ Parsing the
 board's speech-recognised transcripts of the same recordings, every model loses 24 to 29 points in
-clean audio, and the order is unchanged at every noise level.}\AuditID{S4} Most of the
+clean audio, and the order is unchanged at every noise level.}\AuditID{S4}\added[id=PR]{ Without fine-tuning, these
+models given the schema and ten examples reach 0.115 to 0.175. A rule-based parser reaches 0.965 on
+reference transcripts, not separated from Qwen2.5-0.5B, but 0.585 against 0.690 on recognised clean
+speech.}\AuditID{P4} Most of the
 two leading models' golden-set errors are one mistake: a clockwise turn parsed as
-counter-clockwise. Quantisation and the grammar cost no detectable accuracy (at most 1.5 points),
-and without the grammar one output in 3,540 is malformed. On a cooled board Qwen2.5-0.5B decodes
+counter-clockwise. Quantisation and the grammar cost no detectable accuracy\deleted[id=PR]{ (at most 1.5 points),
+and without the grammar one output in 3,540 is malformed}.\AuditID{P4} On a cooled board Qwen2.5-0.5B decodes
 27.9 tokens per second; uncooled, every trial throttled and throughput fell to 18.1, below a floor
 of 20. No model abstains reliably: 19 to 39\% of out-of-domain inputs become commands. For narrow
 on-board parsers, models should be chosen by accuracy under the deployed grammar, by the board's
@@ -93,7 +96,7 @@ thermal state and by abstention, not by parameter count.\AuditID{rewritten: P18,
 \item \replaced[id=PR]{Fine-tuned 0.5B and 1.2B parsers are not separated on drone commands (0.935, 0.910)}{Three fine-tuned small language models parse drone commands on a Raspberry Pi 5}\AuditID{P18}
 \item \replaced[id=PR]{The leading models' main error: clockwise turns parsed as counter-clockwise}{A 0.5B model scores 0.935 against 0.910 for a 1.2B model, a non-significant gap}
 \item \replaced[id=PR]{No model meets the false-command target on out-of-domain input (0.19--0.39)}{At matched size, two model families differ by 6.5 points in exact match}\AuditID{P8}
-\item \replaced[id=PR]{Quantisation and a bounded grammar cost no detectable exact-match accuracy}{Without its grammar, the parser emitted one malformed output in 3,540 decodes}
+\item \replaced[id=PR]{Rules match fine-tuned models on text but trail by 10 points on recognised speech}{Without its grammar, the parser emitted one malformed output in 3,540 decodes}\AuditID{P4}
 \item \replaced[id=PR]{Uncooled, the Raspberry Pi 5 throttled in every trial and fell below 20 tokens/s}{Qwen2.5-0.5B falls below the 20 tokens/s throughput floor without active cooling}
 \end{highlights}
 
@@ -166,6 +169,9 @@ selection. The contributions are:
   0.36~B model by 15 to 17.5 points. Uncertainty is reported at the level of the command pattern,
   the unit that was sampled.\added[id=PR]{ On speech-recognised transcripts the order holds, and every model
   loses about a quarter of its accuracy.}\chcomment[id=PR]{S4}
+\item \added[id=PR]{Two baselines show what fine-tuning buys. It adds 64.5 to 77.5 points over prompting the same
+  model with the schema and examples, while a rule-based parser matches the leading models on reference
+  transcripts and falls about 10 points behind the selected model on recognised speech.}\chcomment[id=PR]{P4}
 \item The deployment pipeline, from the fine-tuned model at 16-bit precision to the 4-bit artefact
   under the grammar, costs at most three golden items net. The grammar changes no artefact's
   accuracy by more than two items and removes the only malformed output in 3,540 decodes.
@@ -309,8 +315,8 @@ MASSIVE~\citep{massive}, 37 requests for capabilities the schema lacks, 38 trunc
 and silence, of which 12 were harvested from \texttt{whisper.cpp} and 25 written to imitate
 them. Apart from those 12, the authors wrote every out-of-domain item.}{:
 assistant-style queries, unsupported requests, truncated fragments, and 12 recogniser outputs on
-noise and silence.}\chcomment[id=PR]{P10} A 240-pair validation set selects checkpoints. \replaced[id=PR]{Except in Section~\ref{sec:res-speech}, every}{Every} accuracy figure in this
-article takes the reference transcript as input.\chcomment[id=PR]{S4} The recogniser's word error rate on the golden
+noise and silence.}\chcomment[id=PR]{P10} A 240-pair validation set selects checkpoints. \replaced[id=PR]{Except in Sections~\ref{sec:res-speech} and~\ref{sec:res-baselines}, every}{Every} accuracy figure in this
+article takes the reference transcript as input.\chcomment[id=PR]{S4, P4} The recogniser's word error rate on the golden
 speaker is 23.1\% (95\% confidence interval, CI, 20.3--25.9) for the recogniser alone without its domain prompt\replaced[id=PR]{;
 accuracy from audio, through the full speech pipeline, is the subject of the companion
 paper~\citep{companion}.}{, and
@@ -366,6 +372,28 @@ not be the model that was trained; it is reported on the reference surface only.
 Because greedy decoding is deterministic, accuracy was scored on a workstation; for the selected
 configuration the outputs on the workstation and on the Raspberry~Pi~5 were identical for all 200
 golden items. All timing was measured on the board.
+
+\subsection{\added[id=PR]{Baselines}}
+\label{sec:baselines}
+
+\added[id=PR]{Two baselines were added after the results, on the same three test sets and the same recognised
+transcripts as Section~\ref{sec:res-speech}. The \emph{few-shot baseline} decodes the three base
+models without fine-tuning, under the same grammar with greedy decoding. Their published
+checkpoints were converted and quantised to \QF{} with the same \texttt{llama.cpp} commit as the
+fine-tuned artefacts. The system prompt defines every intent and slot, the units, the zero-based
+identifiers and the yaw sign, and is followed by ten training pairs, one per intent, as chat turns,
+chosen by a fixed rule: clean, not a hard negative, most slots, then shortest. The server's prompt
+cache was on, because this prefix of about 800 tokens is shared by every item; requests stayed
+sequential on one slot. The \emph{rule-based baseline} is a keyword and regular-expression parser with
+number-word normalisation, in the tradition of pattern-based parsers for embedded
+hardware~\citep{snips2018}. No model is involved. It was written from the 96 training families
+only, without the generator's vocabulary files, and frozen before its first test run. A few test
+items were seen in data files while checking their format, before any rule was written, and no rule
+derives from them. The rule set was drafted with Claude (Anthropic) from the training split and
+reviewed by the authors. Both baselines are scored as the artefacts are. Their comparisons with the
+selected artefact on the three test sets and at the five audio conditions are exploratory; for the
+rule-based parser these eight exact McNemar tests have $\alpha = 0.00625$. Neither baseline was
+timed on the board.}\chcomment[id=PR]{P4}
 
 \subsection{Hardware and timing protocol}
 \label{sec:timing}
@@ -497,9 +525,12 @@ of the remaining 178 items they miss: 2 against 6.}\chcomment[id=PR]{P3} On the
 synthetic and out-of-domain sets the ordering follows parameter count. Intent F1 on the golden set
 exceeds 0.95 for every configuration and is 1.000 for Qwen2.5-0.5B. Of the 152 golden-set errors
 across the six configurations, 133 (87.5\%) keep the reference intent and err in a parameter.
-Schema validity is 1.000 in all 18 configuration--split cells. Prompted zero-shot at fp16, without
+Schema validity is 1.000 in all 18 configuration--split cells. \replaced[id=PR]{Prompted zero-shot at fp16, without fine-tuning and without the grammar, none of the four models
+matches any of the 590 test items (EM 0.000 on every split), but that one-line prompt never defines
+the schema and those predictions were not kept, so the result shows only that the base models do not
+know the schema. Section~\ref{sec:res-baselines} gives the informative comparison.}{Prompted zero-shot at fp16, without
 fine-tuning and without the grammar, none of the four models matches any of the 590 test items
-(EM 0.000 on every split).
+(EM 0.000 on every split).}\chcomment[id=PR]{P4}
 
 \AuditAddedBlock{%
 \begin{table}
@@ -729,6 +760,71 @@ neither Llama-3.2-1B artefact was separated from the selected one (exact $p \geq
 SmolLM2-360M stayed 12.0 to 20.5 points behind the selected artefact at every level (exact
 $p < 0.001$ each).}\chcomment[id=PR]{S4}
 
+\subsection{\added[id=PR]{Baselines (exploratory)}}
+\label{sec:res-baselines}
+
+\AuditAddedBlock{%
+\begin{table*}[t]
+\caption{Baselines against the fine-tuned models at \QF{}, all under the scoring of
+Tables~\ref{tab:comparison} and~\ref{tab:speech}. Few-shot: base model without fine-tuning, with the
+schema and ten examples in the prompt, under the grammar. FT: fine-tuned. Out-of-domain EM is one minus the
+false-command rate. CRR: command recognition rate on the board's recognised transcripts. 95\% CI:
+percentile bootstrap over the 12 command patterns. Safe: failed items, in clean audio, that
+dispatched only \texttt{unknown} or \texttt{hover}. The selected artefact's CRR at 10 and 5~dB is that
+decoded on the workstation, as in Table~\ref{tab:speech}.\AuditID{P4}}
+\label{tab:baselines}
+\footnotesize\setlength{\tabcolsep}{2.5pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccccc@{}}
+\toprule
+& \multicolumn{4}{c}{Reference transcripts (EM)} & \multicolumn{7}{c}{Recognised transcripts (CRR)} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-12}
+System & Golden & 95\% CI & Synthetic & Out-of-domain & Clean & 95\% CI & 20 dB & 15 dB & 10 dB & 5 dB & Safe \\
+\midrule
+Rule-based parser & 0.965 & [0.941, 0.989] & 0.996 & 0.873 & 0.585 & [0.500, 0.693] & 0.555 & 0.560 & 0.495 & 0.390 & 28/83 \\
+\midrule
+SmolLM2-360M few-shot & 0.115 & [0.018, 0.296] & 0.125 & 0.807 & 0.110 & [0.005, 0.297] & 0.110 & 0.110 & 0.105 & 0.105 & 132/178 \\
+Qwen2.5-0.5B few-shot & 0.160 & [0.040, 0.320] & 0.196 & 0.473 & 0.130 & [0.017, 0.304] & 0.125 & 0.105 & 0.105 & 0.110 & 21/174 \\
+Llama-3.2-1B few-shot & 0.175 & [0.074, 0.312] & 0.179 & 0.540 & 0.155 & [0.047, 0.304] & 0.130 & 0.150 & 0.145 & 0.135 & 57/169 \\
+\midrule
+SmolLM2-360M FT & 0.760 & [0.649, 0.867] & 0.812 & 0.660 & 0.520 & [0.382, 0.667] & 0.485 & 0.445 & 0.420 & 0.375 & 8/96 \\
+\textbf{Qwen2.5-0.5B FT} & \textbf{0.935} & [0.828, 1.000] & 0.954 & 0.747 & \textbf{0.690} & [0.577, 0.794] & 0.675 & 0.650 & 0.595 & 0.495 & 2/62 \\
+Llama-3.2-1B FT & 0.910 & [0.794, 0.985] & 0.958 & 0.813 & 0.620 & [0.514, 0.730] & 0.610 & 0.605 & 0.570 & 0.465 & 6/76 \\
+\bottomrule
+\end{tabular*}
+\end{table*}}
+
+\added[id=PR]{Table~\ref{tab:baselines} gives both baselines. With the schema and ten examples in the prompt, the
+base models reach 0.115 to 0.175 on the golden set, so fine-tuning adds 64.5 (SmolLM2-360M) to 77.5
+(Qwen2.5-0.5B) points to the same model; the pattern-level interval for Qwen2.5-0.5B's gain is 61.4 to
+90.9 points. Only \texttt{abort}, which has no slots, is reliable (10 of 10 golden items for
+Qwen2.5-0.5B and Llama-3.2-1B). Those two models misuse the drone identifiers: 51 and 45 of their golden
+failures are wrong in the identifiers alone, and many others in the slots or the intent. SmolLM2-360M
+fails differently, by choosing the wrong intent (142 of 177 failures), and its out-of-domain EM of
+0.807 reflects that it mostly refuses: it also answers \texttt{unknown} or \texttt{hover} on 132 of
+its 178 failures in clean audio.}
+
+\added[id=PR]{The rule-based parser needs no language model and is not separated from the selected artefact on
+reference transcripts. On the golden set it scores 3.0\pp{} higher (11 against 5 discordant items,
+exact item-level $p = 0.21$; pattern-level interval $-4.1$ to +13.9\pp{}), and on the synthetic set 4.2\pp{}
+higher (11 against 1, $p = 0.0064$, just above the corrected $\alpha$; $-0.8$ to +11.2\pp{}). The rotation pattern
+accounts for the whole golden difference: the rules state the sign convention and score 21 of 22
+against 11, and are four items behind on the other patterns. Out of domain it answers more inputs correctly (0.873 against 0.747; 25 against 6,
+$p = 0.00088$; items, +6.0 to +20.0\pp{}), with fewer false commands from truncated fragments (9
+against 20 of 38), but its false-command rate of 0.127 still misses the 0.05 target. Its
+frozen code also has a defect found after the test run: it reads ``one'' inside a repeated
+``drone'', which adds a drone to the list. This costs two golden items and one synthetic item and
+was left in.}
+
+\added[id=PR]{On recognised transcripts the order reverses. In clean audio the parser scores 0.585 against 0.690
+(8 against 29, $p = 0.00075$; $-18.4$ to $-2.5$\pp{}). The gap stays at 9.0 to 12.0\pp{} at every noise
+level, significant under the correction each time, and its pattern-level interval excludes zero except at
+15~dB ($-16.6$ to 0.0\pp{}). Recognition errors break the keywords the rules depend on: ``heading''
+heard as ``hidden'' turns a rotation into a movement, and ``spacing to'' heard as ``space into''
+loses a slot. In clean audio the parser trails on six of the 12 patterns, ties on five and
+leads only on rotation (10 of 22 against 8). The parser's failures
+are safer, though far from the 0.70 target: 28 of 83 in clean audio dispatch only \texttt{unknown} or
+\texttt{hover}, against 2 of 62 for the selected artefact, whose failures almost always dispatch a command.}\chcomment[id=PR]{P4}
+
 \subsection{Latency, throughput and memory}
 \label{sec:res-latency}
 
@@ -885,6 +981,20 @@ performance under an identical training budget. Within it, the trade-off has a m
 moving from Qwen2.5-0.5B to SmolLM2-360M saves 178~ms of p95 and 0.13~GiB of memory and costs
 17.5\pp{} of EM, a significant difference.
 
+\paragraph{\added[id=PR]{What the baselines say about using a language model.}} \added[id=PR]{The baselines answer
+different questions. Against few-shot prompting at this scale, fine-tuning is what makes the model
+usable: a grammar and a full schema description leave these models well below the 0.85 target.
+Against a rule-based parser, the case for a language model is narrower than the reference-transcript
+scores suggest. On clean text generated from templates, rules written from the training
+data do at least as well, and they state the rotation convention that the fine-tuned models get wrong.
+The selected artefact's measurable advantage appears where the deployed system actually operates, on
+recognised speech, and it costs a model of 0.68~GiB against a parser with no weights. Its failures are
+also less safe than the rules', so the advantage is in coverage, not in caution. These comparisons
+favour rules in one respect and models in another: the test corpus shares a generator with the
+training data that the rules were read from, and the fine-tuned models were trained on recognition errors
+that the rules meet only as keywords and a few homophones. A hybrid, in which rules handle what they
+can read and the model handles the rest, is untested here.}\chcomment[id=PR]{P4}
+
 \paragraph{What the grammar adds after fine-tuning.} Without the grammar, the fine-tuned models left
 the format once in 3,540 decodes, and EM moved by 0.17\pp{} in the grammar's favour.\added[id=PR]{ The 3,540
 decodes are 590 items decoded by six related artefacts, so they bound the malformed rate of one
@@ -946,7 +1056,7 @@ a minus sign that the transcript never contains.}\chcomment[id=PR]{P9} The train
 remedies follow\added[id=PR]{ for abstention}: a confidence gate that routes low-probability decodes to \texttt{unknown}, and
 training pairs that map degraded commands to \texttt{unknown}. Neither was implemented here.
 
-\paragraph{Limitations.} \replaced[id=PR]{Apart from Section~\ref{sec:res-speech}, accuracy figures}{All accuracy figures} are measured on reference transcripts, so they
+\paragraph{Limitations.} \replaced[id=PR]{Apart from Sections~\ref{sec:res-speech} and~\ref{sec:res-baselines}, accuracy figures}{All accuracy figures} are measured on reference transcripts, so they
 overstate what the pipeline achieves from audio: \replaced[id=PR]{from the board's recognised transcripts every
 artefact loses 24 to 29 points in clean audio, and that comparison rests on one recogniser and the
 same single speaker.}{through the deployed pipeline the word error rate on the golden speaker is 23.3\%, and the command recognition rate is 0.690 in clean audio and 0.590 at 10~dB of rotor noise, against 0.935 EM on the reference transcripts~\mbox{\citep{companion}}.}\chcomment[id=PR]{P2, S4} The golden set is one non-native English speaker in one session; across 15 accent groups of Common Voice speech~\citep{commonvoice} the recogniser's word error rate ranges from 6.2\% to 49.5\%, so transfer to other speakers is not established. Its 200 items are paraphrases
@@ -961,7 +1071,11 @@ session, and GPU training is not bit-reproducible across sessions~\citep{pytorch
 from one board and one runtime build, with a cached prefill, and from 60 repetitions per configuration, so a margin as narrow as the selected model's decode p95 (1,033~ms against 1,100~ms) could move with a few more slow trials. Only the selected configuration was
 measured end to end, and the full-stack memory of no configuration was measured. Only two GGUF quantisation levels were examined; lower bit widths and other quantisation methods were not measured. Finally, the
 schema is small: single-turn, ten intents and a bounded slot vocabulary. Whether the ordering of
-models or the grammar's low cost carries over to richer schemas is not established.
+models or the grammar's low cost carries over to richer schemas is not established.\added[id=PR]{ The baselines
+have limits of their own. The rule-based parser is one rule set written for this schema and
+this generator; its effort and upkeep would grow with a richer schema, and it was not timed on the
+board. The few-shot baseline is one prompt with ten examples, not a search over prompts, and a
+larger or hosted model and a fine-tuned joint intent-and-slot encoder were not compared.}\chcomment[id=PR]{P4}
 
 % =============================================================================
 \section{Conclusion}
@@ -982,7 +1096,11 @@ of the two leading models are clockwise turns parsed as counter-clockwise, consi
 imbalance in how the training data phrase a rotation. Two further results}{Two results} qualify the choice:
 \replaced[id=PR]{the language-model allowance it meets assumes a cached prompt prefix that the deployed parser
 does not use}{its end-to-end latency exceeds the 2,500~ms budget}, and no configuration meets the false-command or
-safe-failure targets.\chcomment[id=PR]{P9, P7} \added[id=PR]{For narrow parsers on a single-board computer, these results
+safe-failure targets.\chcomment[id=PR]{P9, P7}\added[id=PR]{ Baselines place these results: without fine-tuning the
+same models reach at most 0.175, while a rule-based parser matches the leading fine-tuned models on reference
+transcripts and trails the selected one by about 10 points on recognised speech, so on this
+evidence, from one speaker and one recogniser, a language model's advantage over rules lies in its
+robustness to recognition errors.}\chcomment[id=PR]{P4} \added[id=PR]{For narrow parsers on a single-board computer, these results
 argue for choosing a model by its accuracy under the deployed grammar, by the board's thermal
 state and by its abstention, rather than by parameter count. }Future work will add a log-probability confidence gate and training pairs for
 unreadable commands to address abstention, and will measure the smaller SmolLM2-360M end to end to
