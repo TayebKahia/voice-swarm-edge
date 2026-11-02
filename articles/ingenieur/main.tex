@@ -449,8 +449,13 @@ statistics; when the sample cannot bound a p95 from above, only its lower bound 
 \added[id=PR]{As a single-path baseline, the 40 takes were also replayed once through the parse path with the
 reflex path removed, and each was scored, by the rule of the acoustic-robustness experiment, against
 a hold or an abort. The endpointing delay of this baseline, measured from the same offset anchor,
-is set by the audio and the endpointer, not by the processor; its later stages were timed on an
-x86 workstation, not on the board.}\chcomment[id=PR]{P12: re-time on the Pi}
+is set by the audio and the endpointer, not by the processor.}\replaced[id=PR]{ The takes were then replayed
+through both paths together, once with the parse-path number reserved at acceptance and once at the
+onset of speech, and through a second baseline, a hold published at the endpointer's onset event with
+no keyword, with the board otherwise idle. That hold's false triggers were counted by the endpointer
+alone on the golden-set recordings and the ambient stream. The ambient clips are not on the board, so
+those counts were made on a workstation; the golden-set count on the board was identical.}{ Its later stages were timed on an
+x86 workstation, not on the board.}\chcomment[id=PR]{P12}
 
 \paragraph{Keyword-spotter evaluation.} The heads were scored on held-out recordings streamed in
 80~ms frames with the runtime's debounce: 300 synthetic test takes per class, 0.429~h of held-out
@@ -587,20 +592,89 @@ hold take as ``swarm, walled'', and the parser turned all three into a formation
 resolved to a hold. The reflex path had stopped all three with the right class, and the one take it
 missed, a hold, was recognised by the parse path. Before the parse path could start, the endpointer
 declared each utterance over 612~ms after the keyword offset at the median (95\% interval 600--652~ms)
-and 742~ms at p95: the wait alone exceeds the reflex path's whole p95 of 545~ms from the same anchor.
+and 742~ms at p95: the wait alone exceeds the reflex path's whole p95 of 545~ms from the same anchor.}\replaced[id=PR]{
+On the board, the single path took 2,398~ms from the keyword offset to the applied command at the
+median (95\% interval 2,381--2,452~ms) and 2,537~ms at p95 (lower bound 2,501~ms); speech recognition
+took 1,101~ms and the language model 635~ms at the median.}{
 On the workstation, the single path took 2,271~ms from the keyword offset to the applied command at
 the median and 2,768~ms at p95. On the board, the parse path's stages after endpointing were measured
 only on the ten golden utterances whose command is a bare hold or abort, at a median of 1,902~ms;
 adding the shortest endpointing delay observed here (320~ms) to the shortest of those (1,748~ms) gives
-an estimate of 2.1~s, not a measurement, for a stop routed through the parse path on the board.}
+an estimate of 2.1~s, not a measurement, for a stop routed through the parse path on the board.}\chcomment[id=PR]{P12}
 
-\added[id=PR]{Read together, the two runs show a case that the ordering rule does not cover. On each of the 39
+\replaced[id=PR]{Replayed through both paths together, the takes exposed a case that the ordering rule did not
+cover (Table~\ref{tab:ordering}). On all 39 takes the reflex path detected, its message was published
+before the endpointer closed the utterance, so a parse-path number reserved at acceptance was newer
+than the stop. All 19 parses of a detected hold were therefore applied after it: 18 repeated the hold,
+and on one take, heard as ``swarm, walled'', a formation change replaced it. The state machine refused
+the 20 parses of a detected abort. With the number reserved at the endpointer's onset event, which
+preceded the stop on all 39 takes, the ordering rule discarded all 39 parses, and none was applied after
+the stop (95\% upper bound 0.090). The reflex path's p95 stayed at 545~ms, and the parse path still
+recognised and applied the one hold take the reflex path missed.}{Read together, the two runs show a case that the ordering rule does not cover. On each of the 39
 takes the reflex path detected, its message was published before the endpointer had accepted the
 utterance, so the parse of the stop phrase itself reserves a later sequence number and is applied
 after the stop. Parsed correctly, it repeats the stop. On the hold take that became a formation
 command, it would have replaced the hold with a formation change about two seconds later; after the
 two aborts, the state machine would have rejected it. This combined behaviour is inferred, not
 measured: the latency experiment did not pass the keyword takes to the parse path.}\chcomment[id=PR]{P12}
+
+\AuditAddedBlock{%
+\begin{table}
+\caption{The parse of the stop phrase on the 39 recorded takes the reflex path detected, both paths
+live on the board, by where the parse-path sequence number is reserved. Interval: exact 95\%.\AuditID{P12}}
+\label{tab:ordering}
+\footnotesize
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lrr@{}}
+\toprule
+Fate of the parse & At acceptance & At onset \\
+\midrule
+Applied, same command & 18 & 0 \\
+Applied, a different command & 1 & 0 \\
+Refused by the state machine & 20 & 0 \\
+Discarded by the ordering rule & 0 & 39 \\
+\midrule
+Applied after the stop & 19/39 & 0/39 \\
+\quad 95\% interval & 0.324--0.652 & 0--0.090 \\
+\bottomrule
+\end{tabular*}
+\end{table}}
+
+\added[id=PR]{A hold published when the endpointer detects speech, with no keyword, also passes the membership
+rule, so it is the obvious alternative to a spotter (Table~\ref{tab:voiceonset}). It produced a hold on
+all 40 takes (95\% upper bound on the miss rate 0.088), at a median of 61~ms from the keyword onset and
+141~ms at p95, within the 850~ms budget that the reflex path misses at 1,265~ms; the hold came before
+the keyword had ended on every take. It also fired on everything else: all 190 golden utterances
+whose command is not a stop drew at least one hold, 728 per hour on those recordings and 1,428 per hour
+on the ambient stream, against a target of at most one per hour. On the 20 abort takes it published
+a hold, because it has only one output.}\chcomment[id=PR]{P12}
+
+\AuditAddedBlock{%
+\begin{table}
+\caption{Voice-onset hold against the reflex path on the same 40 takes and anchors. Latency in ms to
+publication on the board, nearest rank, with 95\% intervals; a p95 gives its lower bound only. False
+triggers per hour, with Poisson 95\% intervals, on 0.304~h of golden-set recordings (stop commands
+excluded) and 0.429~h of ambient speech; event counts in parentheses. With the spotter's 1~s debounce
+the voice-onset counts are 219 and 549.\AuditID{P12}}
+\label{tab:voiceonset}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lrr@{}}
+\toprule
+Measure & Voice onset & Reflex path \\
+\midrule
+From onset, p50 & 61 (40--81) & 965 (885--1,085) \\
+From onset, p95 & 141 ($\geq$120) & 1,265 ($\geq$1,225) \\
+From offset, p50 & $-$699 ($-$729, $-$659) & 195 (155--235) \\
+From offset, p95 & $-$509 ($\geq-$599) & 545 ($\geq$436) \\
+Takes producing a stop & 40/40 & 39/40 \\
+Abort takes given an abort & 0/20 & 20/20 \\
+\midrule
+False/h, golden set & 728 (221) & 0 (0) \\
+\quad 95\% interval & 635--830 & 0--12.15 \\
+False/h, ambient & 1,428 (613) & 2.33 (1) \\
+\quad 95\% interval & 1,318--1,546 & 0.06--12.98 \\
+\bottomrule
+\end{tabular*}
+\end{table}}
 
 \subsection{Keyword spotter}
 \label{sec:res-kws}
@@ -829,12 +903,29 @@ cancellation is the first change to measure. \replaced[id=PR]{On the same 40 tak
 parse path alone could not start before 612~ms of endpointing at the median, longer than the reflex
 path's p95, and it turned 3 of the 40 stops into a formation command (Section~\ref{sec:res-single}).
 The case for a separate path therefore rests on robustness as much as on speed, and the endpointing
-part of it does not depend on the board. The same comparison exposes a gap in the ordering rule: the
+part of it does not depend on the board.}{For comparison with the parse path, its p95 from the
+true end of speech, including the endpointing wait, was 3,602~ms, against 545~ms for the reflex path
+from the keyword offset.}\chcomment[id=PR]{P12}\replaced[id=PR]{ Running both paths together showed a gap in the ordering rule: a number reserved at
+acceptance let the parse of a hold follow the hold, and on one take replace it. Reserving the number at
+the onset of speech closed that on all 39 detected takes. The cost is that the rule now also discards
+any command spoken in the same utterance as a stop, whether the stop was meant or not: the reflex
+path's one false trigger on the golden set, a hold during a landing command, would now cost that
+landing as well.}{ The same comparison exposes a gap in the ordering rule: the
 parse of the stop phrase itself is accepted after the reflex message and can replace a hold.
 Reserving the parse-path number at the onset of speech rather than at acceptance would make that
-parse stale, at the cost of also discarding a command spoken in the same utterance as the stop.}{For comparison with the parse path, its p95 from the
-true end of speech, including the endpointing wait, was 3,602~ms, against 545~ms for the reflex path
-from the keyword offset.}\chcomment[id=PR]{P12}
+parse stale, at the cost of also discarding a command spoken in the same utterance as the stop.}\chcomment[id=PR]{P12}
+
+\added[id=PR]{The voice-onset baseline answers what the keyword buys, and speed is not part of the answer: that
+hold was published about 900~ms earlier at the median. The keyword buys three other things. It buys
+selectivity: on the same streams the onset hold fired hundreds of times more often, and on every
+ordinary command, so it would meet the membership rule and miss the false-accept target by three orders
+of magnitude. It buys a second output, since an onset event cannot tell an abort from a hold. And it
+buys a stop the ordering rule can protect. An onset hold and the utterance that triggered it begin at
+the same event, so that utterance's parse must be numbered either older than the hold, which would
+discard every spoken command, or newer, which reopens the gap above and lets the three misrecognised
+stops become formation commands. These counts are of clean speech: an operator in a quiet field would
+see fewer false holds, and rotor noise, which was not measured for this baseline, could change them in
+either direction.}\chcomment[id=PR]{P12}
 
 \paragraph{The parse path.} Two stages explain the 622~ms excess. Prefill without a prompt cache
 cost 751~ms against a 250~ms allowance; the deployed parser disables the cache so that its accuracy
@@ -896,7 +987,7 @@ operation was not verified by a run with networking disabled, and the live demon
 performed. Formation commands carry no speed, so the validator's 2.0~m/s ceiling does not apply to
 formation changes, while the backends allow 3~m/s; vehicle speeds were not recorded. Preemption does
 not reach utterances queued behind the one in progress, nor a trigger that arrives during
-transcription, and no reflex trial overlapped speech recognition.\added[id=PR]{ The single-path baseline's stages
+transcription, and no reflex trial overlapped speech recognition.\replaced[id=PR]{ The voice-onset hold was timed with the board otherwise idle, and its false triggers were counted on clean speech only.}{ The single-path baseline's stages
 after endpointing were timed on a workstation, and the interaction between a reflex stop and the
 parse of the same phrase was inferred from two separate runs rather than measured.}\chcomment[id=PR]{P12} The state machine judges legality on a command's intent before the validator substitutes a hold, so an unvalidated command could dispatch a hold in a state where a hold is illegal; on the deployed route validation comes first, so the case does not arise there. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
 to decide either keyword criterion.
@@ -914,10 +1005,10 @@ A two-test membership rule restricts the reflex path to a hold and an abort, and
 layers bound what a wrong command can do. The system misses its latency budgets on both paths, before the board's share on the reflex path
 and in speech recognition and uncached prefill on the parse path, and misses its recognition targets under
 rotor noise, with errors that do not become safer as noise rises.\added[id=PR]{ Routed through the parse path
-alone, a stop waited 612~ms at the median for the endpointer and was misrecognised in 3 of 40 takes.}\chcomment[id=PR]{P12}
+alone, a stop waited 612~ms at the median for the endpointer and was misrecognised in 3 of 40 takes.}\chcomment[id=PR]{P12}\added[id=PR]{ Reserving the parse-path number at the onset of speech stopped the parse of a stop phrase being applied after the stop, on 19 of 39 takes before and none after. A hold at voice onset was about 900~ms faster than the keyword but fired on every ordinary command.}\chcomment[id=PR]{P12}
 Future work will reduce the spotter's
-decision delay\added[id=PR]{ and re-measure it against a forced alignment, reserve the parse-path sequence
-number at the onset of speech}, cache the prompt prefix after a parity check, replace the server's polling with an
+decision delay\added[id=PR]{ and re-measure it against a forced alignment}\deleted[id=PR]{, reserve the parse-path sequence
+number at the onset of speech}\chcomment[id=PR]{P12}, cache the prompt prefix after a parity check, replace the server's polling with an
 explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate, build the
 link from the state machine to the controller, replace the integrator clamp with a force-level
 mechanism, and run the complete chain live, with networking disabled and on physical vehicles.
