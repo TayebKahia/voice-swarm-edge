@@ -179,13 +179,20 @@ class PipelineRuntime:
     def on_utterance(self, audio_path: Path) -> BusMessage | None:
         return self.process(audio_path).message
 
-    def process(self, audio_path: Path) -> BranchBTrace:
-        """`on_utterance`, keeping the per-stage timings (NFR-3, Table 6)."""
-        # Reserved *before* transcription/decode starts, not at publish time
-        # (see `CommandBus.next_seq`) -- Sec. 4.3's ordering rule depends on a
-        # slow, later-preempted decode still carrying the older number.
+    def reserve_seq(self) -> int:
+        """The number for an utterance whose speech has just started (`runtime/stream.py`)."""
+        return self.bus.next_seq()
+
+    def process(self, audio_path: Path, *, seq: int | None = None) -> BranchBTrace:
+        """`on_utterance`, keeping the per-stage timings (NFR-3, Table 6).
+
+        `seq` is the number reserved at speech onset. Without one (a WAV handed in
+        directly, with no stream behind it) the number is reserved here, still before
+        transcription, which is the latest point Sec. 4.3's rule can tolerate.
+        """
         t_start = time.monotonic()
-        seq = self.bus.next_seq()
+        if seq is None:
+            seq = self.bus.next_seq()
         transcript = transcribe_utterance(audio_path, threads=self.stt_threads)
         t_transcribed = time.monotonic()
         try:

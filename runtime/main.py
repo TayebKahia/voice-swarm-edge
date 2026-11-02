@@ -9,12 +9,14 @@ the workstation, where the consumer, the state machine, the link and the simulat
 (`demo/workstation.py`). `Narrator` only prints and logs what each path did, for the camera.
 
 One rule is added here and nowhere else, and it is demonstration-only: `ReflexGate` stops the parse
-path publishing an utterance the reflex path already acted on. Both paths hear "swarm hold"; the
-parse path's copy draws a newer sequence number than the reflex, so the consumer's ordering rule
-(discard parse messages *older* than the last reflex) lets it through, and a misheard copy
-overrides the hold. The first live run measured that: 10 spoken "swarm hold", 10 reflex triggers,
-and parse-path copies of hover x6, unknown x1, abort x1 ("swarm, halt.") and a wedge formation x2
-("swarm, horned."). No measured result was produced through this module, so none changes.
+path publishing an utterance the reflex path already acted on. Both paths hear "swarm hold"; when
+the parse path's number was drawn at acceptance, its copy was newer than the reflex, so the
+consumer's ordering rule (discard parse messages *older* than the last reflex) let it through, and
+a misheard copy overrode the hold. The first live run measured that: 10 spoken "swarm hold", 10
+reflex triggers, and parse-path copies of hover x6, unknown x1, abort x1 ("swarm, halt.") and a
+wedge formation x2 ("swarm, horned."). `runtime/stream.py` now reserves the number at speech onset,
+so the rule discards those copies by itself; what the gate still adds is that a suppressed utterance
+is never transcribed. No measured result was produced through this module, so none changes.
 
     python runtime/main.py --bus-host 10.42.0.1                 # the demonstration
     python runtime/main.py --level-check                        # microphone level, no pipeline
@@ -77,9 +79,12 @@ class Narrator:
             say(f"REFLEX  '{_KEYWORD.get(intent, intent)}' -> {message.command}  seq={message.seq}")
         return message
 
-    def process(self, audio_path: Path):
+    def reserve_seq(self) -> int:
+        return self._runtime.reserve_seq()
+
+    def process(self, audio_path: Path, *, seq: int | None = None):
         say("PARSE   utterance endpointed; transcribing")
-        trace = self._runtime.process(audio_path)
+        trace = self._runtime.process(audio_path, seq=seq)
         say(f"PARSE   heard: \"{trace.transcript}\"")
         if trace.aborted:
             say(f"PARSE   decode stopped (seq={trace.seq}); nothing published")
@@ -104,18 +109,14 @@ class ReflexGate:
     * the reflex phrase's own parse-path copy (the measured failure above);
     * a trigger the spotter reports just after the endpointer has closed the utterance (seen
       in replay: 0.15 s after, for a command and "swarm hold" spoken in one breath);
-    * a command still queued behind a slow parse when the reflex fires. `PipelineRuntime`
-      draws the parse sequence number when the worker starts the utterance, not at its
-      endpoint, so without this the queued command would be numbered after the hold and
-      override it.
+    * a command still queued behind a slow parse when the reflex fires.
 
-    Once a parse has started, it is the ordering rule's business, as before: its number was drawn
-    first, so a reflex that fires during transcription or decode discards it on the consumer.
-    The window between this check and `PipelineRuntime.process` drawing its number is not closed;
-    it is the length of a function call.
+    All three now carry a number older than the reflex (`runtime/stream.py` reserves it at speech
+    onset), so the ordering rule would discard them on the consumer anyway; the gate saves their
+    transcription and decode. Once a parse has started, it is the ordering rule's business, as
+    before.
 
-    A suppressed utterance is never transcribed: no sequence number is drawn and nothing is
-    published.
+    A suppressed utterance is never transcribed and nothing is published.
     """
 
     def __init__(self, runtime, endpointer) -> None:
@@ -137,12 +138,23 @@ class ReflexGate:
                 "stream_s": round(self._stream_s, 3)})
         return message
 
+    @property
+    def on_speech_start(self):
+        return self._endpointer.on_speech_start
+
+    @on_speech_start.setter
+    def on_speech_start(self, callback) -> None:
+        self._endpointer.on_speech_start = callback
+
+    def reserve_seq(self) -> int:
+        return self._runtime.reserve_seq()
+
     def feed(self, chunk):
         utterances = self._endpointer.feed(chunk)
         self._pending.extend(utterances)
         return utterances
 
-    def process(self, audio_path: Path):
+    def process(self, audio_path: Path, *, seq: int | None = None):
         from runtime.pipeline import BranchBTrace
 
         utterance = self._pending.popleft()               # StreamLoop's worker takes them in order
@@ -150,7 +162,7 @@ class ReflexGate:
             self._fired = [(t, m) for t, m in self._fired if t >= utterance.start_s]   # later starts only
             fired, owner = self._fired[0] if self._fired else (None, None)
         if owner is None:
-            return self._runtime.process(audio_path)
+            return self._runtime.process(audio_path, seq=seq)
         intent = owner.command.get("intent")
         when = "during it" if fired <= utterance.t0_s else "after it"
         say(f"PARSE   utterance endpointed; reflex #{owner.seq} '{_KEYWORD.get(intent, intent)}' "

@@ -35,11 +35,17 @@ reported as one rather than resolved here.
 clips plosive onsets that whisper then mis-hears; 200 ms is taken from the
 buffer, so it costs no latency. It must not exceed min_silence_ms, or the tail
 pad would reach past audio the stream has delivered.
+
+**`on_speech_start` is the onset event.** It fires on the frame thread, once per
+segment, from the window that opens it; onsets and emitted segments alternate, so
+the caller can pair them in order. `runtime/stream.py` reserves the parse path's
+sequence number here (Sec. 4.3's ordering rule; see `CommandBus.next_seq`).
 """
 
 from __future__ import annotations
 
 import wave
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -122,6 +128,7 @@ class Endpointer:
         min_silence_ms: int = 450,
         speech_pad_ms: int = 200,
         max_utterance_s: float = 15.0,
+        on_speech_start: Callable[[], object] | None = None,
     ) -> None:
         if speech_pad_ms > min_silence_ms:
             raise ValueError("speech_pad_ms may not exceed min_silence_ms: the tail pad would outrun the stream")
@@ -130,6 +137,7 @@ class Endpointer:
         self._min_silence = int(RATE * min_silence_ms / 1000)
         self._pad = int(RATE * speech_pad_ms / 1000)
         self._max = int(RATE * max_utterance_s)
+        self.on_speech_start = on_speech_start
         self.reset()
 
     def reset(self) -> None:
@@ -166,6 +174,8 @@ class Endpointer:
                 # Clamped to the buffer: right after an emit, the onset pad cannot
                 # reach back into audio that already belongs to the previous segment.
                 self._speech_start = max(self._buf_start, window_start - self._pad)
+                if self.on_speech_start is not None:
+                    self.on_speech_start()
         elif self._triggered and prob < self._threshold - 0.15:
             if not self._temp_end:
                 self._temp_end = window_start  # silence began at this window

@@ -14,12 +14,15 @@ import socket
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from runtime.branch_a import BranchA
 from runtime.bus import CommandBus
 from runtime.parser import ParseAborted, ParseResult
 from runtime.pipeline import Dispatcher, PipelineRuntime
+from runtime.stream import FRAME, StreamLoop, WavSource
+from runtime.vad import Endpointer
 from schema.schema import Abort, Hover
 from swarm.fsm import FlightState, FlightStateMachine
 
@@ -205,6 +208,115 @@ def test_on_utterance_publishes_nothing_when_the_decode_is_aborted(bus: CommandB
 
     assert runtime.on_utterance(Path("unused.wav")) is None
     assert bus.recv(timeout=0.05) is None
+
+
+# --------------------------------------------------------------------------
+# The parse of the stop phrase itself: the number is reserved at speech onset
+
+
+class ScriptedVAD:
+    """Speech from window `start` up to `stop`; the endpointer's arithmetic stays real."""
+
+    def __init__(self, *spans: tuple[int, int]) -> None:
+        self.spans = spans
+        self.window = 0
+
+    def reset(self) -> None:
+        self.window = 0
+
+    def __call__(self, window: np.ndarray) -> float:
+        k, self.window = self.window, self.window + 1
+        return 0.9 if any(start <= k < stop for start, stop in self.spans) else 0.0
+
+
+@dataclass
+class ScriptedSpotter:
+    """A `swarm hold` trigger on one chosen frame."""
+
+    fire_on: int
+    frame: int = 0
+
+    def predict(self, frame: object) -> dict[str, float]:
+        k, self.frame = self.frame, self.frame + 1
+        return {"swarm_hold": 0.9} if k == self.fire_on else {}
+
+
+WALLED = ParseResult(raw='{"intent":"formation","shape":"wedge"}', prefill_ms=1.0, decode_ms=1.0)
+
+
+def _stream(bus: CommandBus, fire_on: int, spans: tuple[tuple[int, int], ...], parser: FakeParser):
+    runtime = PipelineRuntime(bus=bus, branch_a=BranchA(ScriptedSpotter(fire_on)), parser=parser)
+    audio = np.zeros(FRAME * 60, dtype=np.int16)
+    return StreamLoop(runtime, Endpointer(ScriptedVAD(*spans))).run(WavSource(audio, realtime=False))
+
+
+def test_w19_a_misheard_stop_phrase_cannot_replace_the_hold(
+    bus: CommandBus, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Take w19: "swarm hold", heard by the recogniser as "swarm, walled", parsed as a formation.
+
+    The spotter fires before the endpointer closes the utterance, so the parse starts only after
+    the hold is on the bus. A number reserved at that point is newer than the hold, the ordering
+    rule lets the formation through, and it replaces the hold. Reserved at speech onset, it is
+    older, and the rule discards it.
+    """
+    monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "swarm, walled.")
+    fsm = _flying_fsm()
+    dispatcher = Dispatcher(fsm)
+
+    # Speech over windows 30-60 (0.96-1.92 s), spotter on frame 22 (ends 1.84 s), endpoint near 2.4 s.
+    result = _stream(bus, fire_on=22, spans=((30, 60),), parser=FakeParser(result=WALLED))
+
+    (event,) = result.branch_a
+    (record,) = result.branch_b
+    assert event.stream_s < record.utterance.t0_s            # the hold precedes the endpoint
+    assert record.trace.message.command["intent"] == "formation"   # the parse did publish
+    assert record.trace.seq < event.message.seq
+    assert dispatcher.drain(bus, timeout=2.0) == [Hover(intent="hover"), None]
+
+
+def test_a_command_with_no_stop_in_it_is_still_applied(bus: CommandBus, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "form a wedge")
+    dispatcher = Dispatcher(_flying_fsm())
+
+    result = _stream(bus, fire_on=10_000, spans=((30, 60),), parser=FakeParser(result=WALLED))
+
+    (record,) = result.branch_b
+    (applied,) = dispatcher.drain(bus, timeout=2.0)
+    assert applied is not None and applied.intent == "formation"
+    assert record.trace.message is not None
+
+
+def test_a_command_begun_after_the_stop_is_newer_and_is_applied(
+    bus: CommandBus, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "form a wedge")
+    dispatcher = Dispatcher(_flying_fsm())
+
+    # The spotter fires on frame 5 (ends 0.48 s), before speech begins at 0.96 s.
+    _stream(bus, fire_on=5, spans=((30, 60),), parser=FakeParser(result=WALLED))
+
+    hold, formation = dispatcher.drain(bus, timeout=2.0)
+    assert hold == Hover(intent="hover")
+    assert formation is not None and formation.intent == "formation"
+
+
+def test_each_utterance_keeps_the_number_of_its_own_onset(bus: CommandBus, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "form a wedge")
+
+    result = _stream(bus, fire_on=10_000, spans=((10, 20), (50, 60)), parser=FakeParser(result=WALLED))
+
+    assert [r.trace.seq for r in result.branch_b] == [0, 1]
+
+
+def test_a_direct_wav_entry_still_reserves_for_itself(bus: CommandBus, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "form a wedge")
+    runtime = PipelineRuntime(bus=bus, branch_a=BranchA(FakeWakeDetector({})), parser=FakeParser(result=WALLED))
+
+    reserved = runtime.reserve_seq()
+
+    assert runtime.process(Path("unused.wav"), seq=reserved).seq == reserved
+    assert runtime.process(Path("unused.wav")).seq == reserved + 1
 
 
 # --------------------------------------------------------------------------

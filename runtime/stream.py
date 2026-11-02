@@ -7,6 +7,12 @@ publish). The frame loop never waits on that worker. That is the property NFR-1
 depends on: Branch A must hold its budget *while* Branch B is decoding, so Branch B
 may not be able to delay the next frame.
 
+**The parse path's sequence number is reserved here, at the endpointer's onset
+event**, not when the worker accepts the utterance. The spotter usually fires before
+the endpointer closes the utterance, so a number reserved at acceptance is newer than
+the stop that utterance contains, and the parse of the stop phrase is applied after
+the stop.
+
 **The frame source is swappable.** A source is any iterable of `(frame, t_due)`:
 1,280 int16 samples and the `time.monotonic()` instant the frame's last sample is
 in the buffer. `WavSource` replays a file in real time, which is what Exp-2 does
@@ -34,6 +40,7 @@ import queue
 import tempfile
 import threading
 import time
+from collections import deque
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -90,10 +97,13 @@ class WavSource:
 
 class _Runtime(Protocol):
     def on_wake_frame(self, frame: object) -> BusMessage | None: ...
-    def process(self, audio_path: Path) -> BranchBTrace: ...
+    def reserve_seq(self) -> int: ...
+    def process(self, audio_path: Path, *, seq: int | None = None) -> BranchBTrace: ...
 
 
 class _Endpointer(Protocol):
+    on_speech_start: Callable[[], object] | None
+
     def feed(self, chunk: np.ndarray) -> list[Utterance]: ...
 
 
@@ -154,7 +164,10 @@ class StreamLoop:
         frames: list[FrameStat] = []
         events: list[BranchAEvent] = []
         records: list[BranchBRecord] = []
-        work: queue.Queue[tuple[Utterance, float] | None] = queue.Queue()
+        work: queue.Queue[tuple[Utterance, float, int | None] | None] = queue.Queue()
+        onsets: deque[int] = deque()   # frame thread only; onsets and utterances alternate
+        if self._branch_b:
+            self._endpointer.on_speech_start = lambda: onsets.append(self._runtime.reserve_seq())
 
         with tempfile.TemporaryDirectory(prefix="stream-") as tmp:
             worker = threading.Thread(
@@ -172,11 +185,12 @@ class StreamLoop:
                 for utterance in self._endpointer.feed(frame):
                     t0_wall = t_due - (delivered / RATE - utterance.t0_s)
                     if self._branch_b:
-                        work.put((utterance, t0_wall))
+                        work.put((utterance, t0_wall, onsets.popleft() if onsets else None))
                     else:
                         records.append(BranchBRecord(utterance, t0_wall, None))
                 frames.append(FrameStat(t_due, max(0.0, t_pick - t_due), self._clock() - t_pick))
             if self._branch_b:
+                self._endpointer.on_speech_start = None
                 work.put(None)
                 worker.join()
         return StreamResult(frames, events, records)
@@ -185,8 +199,8 @@ class StreamLoop:
         pin(self._back)
         n = 0
         while (item := work.get()) is not None:
-            utterance, t0_wall = item
+            utterance, t0_wall, seq = item
             path = utterance.to_wav(tmp / f"u{n:03d}.wav")
             n += 1
-            trace = self._runtime.process(path)
+            trace = self._runtime.process(path, seq=seq)
             records.append(BranchBRecord(utterance, t0_wall, trace, self._clock()))

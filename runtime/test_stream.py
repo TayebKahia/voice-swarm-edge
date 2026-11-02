@@ -73,7 +73,10 @@ class FakeRuntime:
         self.frames_seen += 1
         return _message(index) if index in self.fire_on else None
 
-    def process(self, audio_path: Path) -> BranchBTrace:
+    def reserve_seq(self) -> int:
+        return 0
+
+    def process(self, audio_path: Path, *, seq: int | None = None) -> BranchBTrace:
         self.worker_threads.add(threading.current_thread().name)
         assert audio_path.is_file()
         self.release.wait(timeout=5)

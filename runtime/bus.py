@@ -106,16 +106,16 @@ class CommandBus:
     def next_seq(self) -> int:
         """Reserve the next sequence number without publishing.
 
-        Branch B (`runtime/pipeline.py`) reserves one when it *starts*
-        processing an utterance, not when it eventually publishes. Sec. 4.3's
-        ordering rule depends on that: a decode already in flight when Branch
-        A triggers must still carry the number it was reserved *before* the
-        trigger, all the way through to publish -- otherwise a slow message
-        that finishes after a later Branch A trigger would be assigned a
-        higher sequence number simply for finishing later, and the "discard
-        anything lower than the highest Branch A seq already applied" rule
-        would never catch it. Branch A has no such gap (detect, build, publish
-        are one synchronous call), so it lets `publish()` reserve for it.
+        Branch B (`runtime/stream.py`) reserves one at the *onset of speech*,
+        not when it eventually publishes. Sec. 4.3's ordering rule depends on
+        that: an utterance in which Branch A triggers must still carry the
+        number it was reserved *before* the trigger, all the way through to
+        publish -- otherwise a message that finishes after a later Branch A
+        trigger would be assigned a higher sequence number simply for finishing
+        later, and the "discard anything lower than the highest Branch A seq
+        already applied" rule would never catch it. Branch A has no such gap
+        (detect, build, publish are one synchronous call), so it lets
+        `publish()` reserve for it.
         """
         with self._seq_lock:
             return next(self._counter)

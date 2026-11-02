@@ -67,6 +67,17 @@ def test_silence_alone_produces_nothing() -> None:
     assert _run(_silence(5.0)) == []
 
 
+def test_speech_start_fires_once_per_segment_before_its_end() -> None:
+    speech = _golden("0001")
+    stream = np.concatenate([_silence(1.0), speech, _silence(1.0), speech, _silence(1.5)])
+    events: list[str] = []
+    endpointer = Endpointer(on_speech_start=lambda: events.append("start"))
+    for i in range(0, stream.size, 1280):
+        events += ["end"] * len(endpointer.feed(stream[i : i + 1280]))
+    assert events[:2] == ["start", "end"] and events[-2:] == ["start", "end"]
+    assert events.count("start") == events.count("end")
+
+
 def test_two_utterances_are_two_segments() -> None:
     stream = np.concatenate([_silence(0.8), _golden("0001"), _silence(1.5), _golden("0002"), _silence(1.5)])
     utts = _run(stream)

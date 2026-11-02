@@ -36,9 +36,12 @@ class FakeRuntime:
             return None
         return BusMessage(seq=100 + index, branch="A", command={"intent": "hover"}, t_publish=0.0)
 
-    def process(self, audio_path: Path) -> BranchBTrace:
+    def reserve_seq(self) -> int:
+        return 500
+
+    def process(self, audio_path: Path, *, seq: int | None = None) -> BranchBTrace:
         self.processed += 1
-        message = BusMessage(seq=self.processed, branch="B", command={"intent": "formation"}, t_publish=0.0)
+        message = BusMessage(seq=self.processed if seq is None else seq, branch="B", command={"intent": "formation"}, t_publish=0.0)
         return BranchBTrace(seq=message.seq, transcript="t", raw="{}", message=message,
                             t_start=0, t_transcribed=0, t_parsed=0, t_published=0)
 
@@ -139,3 +142,19 @@ def test_inside_the_real_stream_loop():
     assert record.trace.aborted and record.trace.message is None
     assert runtime.processed == 0
     assert len(result.branch_a) == 1                   # the reflex itself is untouched
+
+
+def test_the_gate_passes_the_onset_number_through():
+    class OnsetEndpointer(FakeEndpointer):
+        on_speech_start = None
+
+        def feed(self, chunk: np.ndarray) -> list[Utterance]:
+            if self.fed == 5:
+                self.on_speech_start()
+            return super().feed(chunk)
+
+    runtime = FakeRuntime()
+    gate = ReflexGate(runtime, OnsetEndpointer({16: 0.40}))
+    result = StreamLoop(gate, gate).run(WavSource(np.zeros(FRAME * 30, dtype=np.int16), realtime=False))
+    record, = result.branch_b
+    assert record.trace.seq == 500
