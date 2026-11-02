@@ -1,0 +1,19 @@
+{
+  "host": "drone-pi",
+  "golden": {
+    "hours": 0.3036527777777778,
+    "items": 200,
+    "onsets": 231,
+    "stop_items": 10,
+    "onsets_on_stop_items": 10,
+    "false_holds": 221,
+    "false_holds_debounced": 219,
+    "items_with_a_hold": 200,
+    "non_stop_items_with_a_hold": 190,
+    "per_hour": 727.8049672963454,
+    "ci95": [
+      635.0063492748503,
+      830.3501199635999
+    ]
+  }
+}

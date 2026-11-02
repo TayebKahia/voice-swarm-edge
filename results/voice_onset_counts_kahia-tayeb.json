@@ -1,0 +1,29 @@
+{
+  "host": "kahia-tayeb",
+  "golden": {
+    "hours": 0.3036527777777778,
+    "items": 200,
+    "onsets": 231,
+    "stop_items": 10,
+    "onsets_on_stop_items": 10,
+    "false_holds": 221,
+    "false_holds_debounced": 219,
+    "items_with_a_hold": 200,
+    "non_stop_items_with_a_hold": 190,
+    "per_hour": 727.8049672963454,
+    "ci95": [
+      635.0063492748503,
+      830.3501199635999
+    ]
+  },
+  "ambient": {
+    "hours": 0.42916666666666664,
+    "false_holds": 613,
+    "false_holds_debounced": 549,
+    "per_hour": 1428.3495145631068,
+    "ci95": [
+      1317.5011026333746,
+      1546.033625997132
+    ]
+  }
+}
