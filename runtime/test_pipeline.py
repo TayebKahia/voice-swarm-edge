@@ -309,6 +309,19 @@ def test_each_utterance_keeps_the_number_of_its_own_onset(bus: CommandBus, monke
     assert [r.trace.seq for r in result.branch_b] == [0, 1]
 
 
+def test_a_utterance_begun_before_the_stop_is_older_even_if_queued(
+    bus: CommandBus, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A command endpointed, then "swarm hold": both started before the hold, so both lose to it."""
+    monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "form a wedge")
+
+    # Speech over 0.32-0.64 s and 1.60-1.92 s, spotter on frame 22 (ends 1.84 s).
+    result = _stream(bus, fire_on=22, spans=((10, 20), (50, 60)), parser=FakeParser(result=WALLED))
+
+    (event,) = result.branch_a
+    assert [r.trace.seq < event.message.seq for r in result.branch_b] == [True, True]
+
+
 def test_a_direct_wav_entry_still_reserves_for_itself(bus: CommandBus, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("runtime.pipeline.transcribe_utterance", lambda path, **_: "form a wedge")
     runtime = PipelineRuntime(bus=bus, branch_a=BranchA(FakeWakeDetector({})), parser=FakeParser(result=WALLED))

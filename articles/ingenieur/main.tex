@@ -77,7 +77,9 @@ Pi~5 and splits commands between two paths. A parse path
 transcribes each utterance and parses it with a fine-tuned small language model under a grammar; a
 reflex path, a two-class keyword spotter, publishes a hold or an abort without transcription and
 cancels any parse in progress. A two-test rule admits to the reflex path only commands whose delay
-changes the outcome and whose false trigger can only make the swarm do less: two of ten. On recorded audio, each of 39 keyword takes that met a parse cancelled
+changes the outcome and whose false trigger can only make the swarm do less: two of ten.\added[id=PR]{ A hazard
+analysis tightens the rule into a checkable property: the hold satisfies it, and the abort stays on
+the reflex path as a stated exception, accepting that its false trigger lands the swarm.}\AuditID{P13} On recorded audio, each of 39 keyword takes that met a parse cancelled
 it, with no class confusion.\added[id=PR]{ Through the parse path alone, the same takes waited 612~ms at the
 median for the end of speech, and 3 of 40 stops became a formation command.}\AuditID{P12} Both paths miss their latency budgets: the reflex path takes 545--556~ms
 at the 95th percentile against 150~ms, almost all of it before the board's 5--18~ms, and the parse
@@ -152,7 +154,8 @@ target.}%
 \item A membership rule for commands that bypass interpretation: a command qualifies only if its
   delay changes the physical outcome and its unprompted execution can only make the swarm do less.
   Applied to a ten-intent schema it admits exactly a hold and an abort, and it states the condition
-  under which a third class could be admitted.
+  under which a third class could be admitted.\added[id=PR]{ A hazard analysis tightens it into a checkable
+  minimality property, which the hold satisfies; the abort does not, and is kept as a stated exception.}\chcomment[id=PR]{P13}
 \item A per-stage latency budget for that path, measured on the board while the language model
   decodes on the same processor, which separates the spotter's decision delay (540~ms at p95) from
   the board's own share (5--18~ms).
@@ -300,15 +303,19 @@ and a sequence number.
 When the reflex path fires while the parse path is decoding, two actions follow, and only one is
 needed for correctness. The needed one is an ordering rule in the bus consumer: a parse-path message
 whose sequence number is lower than that of the latest applied reflex-path message is discarded.
-Both paths draw numbers from one locked counter. A parse-path utterance reserves its number when it
+Both paths draw numbers from one locked counter. \replaced[id=PR]{A parse-path utterance reserves its number at the
+onset of speech, not when it is accepted or when its decode completes; a number assigned later would
+let the parse of a stop phrase, or a slow decode that finishes after a stop, compare as newer and
+override it.}{A parse-path utterance reserves its number when it
 is accepted for processing, before transcription, not when its decode completes; a number assigned
-at completion would let a slow decode that finishes after a stop compare as newer and override it.
+at completion would let a slow decode that finishes after a stop compare as newer and override it.}\chcomment[id=PR]{P12}
 The second action is an optimisation: the reflex path closes the parser's request in flight, so that
 the three inference cores are released at once. Correctness does not depend on the cancellation
 succeeding; what it governs is recovery, the time before the parse path can accept the next
-utterance. The rule covers the utterance in progress, not utterances already queued behind it: a
+utterance. \replaced[id=PR]{The rule covers every utterance whose speech began before the stop, including utterances queued behind
+the one in progress, which are still transcribed and decoded before being discarded.}{The rule covers the utterance in progress, not utterances already queued behind it: a
 queued utterance reserves its number when it is dequeued, so after a hold it can still take effect
-(after an abort, the state machine rejects it).
+(after an abort, the state machine rejects it).}\chcomment[id=PR]{P12}
 
 \subsection{Reflex-path membership rule}
 \label{sec:membership}
@@ -340,9 +347,11 @@ Intent & Latency-decisive & Fail-safe if false & Path \\
 A false trigger on the reflex path publishes a well-formed command that is inside the envelope and
 legal in flight, so no validation layer can detect it; the only protection is to restrict which
 commands the path carries. A command must pass two tests (Table~\ref{tab:membership}). The first
-asks whether the time saved changes the physical outcome. The difference between the parse and
+asks whether the time saved changes the physical outcome. \replaced[id=PR]{Section~\ref{sec:hazard} derives it from
+stopping distance: at every speed the validator admits, the parse path's extra delay moves a vehicle
+further than the 0.35~m that defines a collision.}{The difference between the parse and
 reflex budgets is $2{,}500 - 150 = 2{,}350$~ms; at the validator's speed ceiling of 2.0~m/s that is
-4.7~m of travel, comparable to the largest admissible inter-drone spacing (5~m). The second asks what
+4.7~m of travel, comparable to the largest admissible inter-drone spacing (5~m).}\chcomment[id=PR]{P13} The second asks what
 happens if the command executes without having been spoken: it passes only if the swarm then does
 less, never more. Neither test suffices alone. The first alone would admit urgent movements, whose
 false triggers are uncommanded motion; the second alone would admit harmless commands that gain
@@ -353,10 +362,14 @@ mission can be resumed. \emph{Swarm abort} publishes \texttt{abort}, a descent i
 motors stopped on ground contact. These are the effects on the designed route; the link that would
 apply them to the controller is not built (Section~\ref{sec:setup}), so neither was executed on
 the simulated vehicles. A \emph{resume} phrase is excluded deliberately: a false trigger
-would restart motion the operator chose to freeze. Confusion between the two admitted classes is
-benign, since either outcome stops the swarm. The rule applies to the command a phrase publishes,
+would restart motion the operator chose to freeze. \replaced[id=PR]{Confusion between the two admitted classes is
+benign in one direction only: an abort heard as a hold stops the swarm, but a hold heard as an abort
+lands it (Section~\ref{sec:hazard}).}{Confusion between the two admitted classes is
+benign, since either outcome stops the swarm.}\chcomment[id=PR]{P13} The rule applies to the command a phrase publishes,
 not to the phrase, and it states the condition under which a third class could be admitted: both
-tests pass, and the aggregate false-accept rate measured with the class in place stays within budget.
+tests pass, and the aggregate false-accept rate measured with the class in place stays within budget.\added[id=PR]{
+Section~\ref{sec:hazard} tightens the two tests into one checkable property, which the hold satisfies
+and the abort does not; the abort is kept on the reflex path as a stated exception.}\chcomment[id=PR]{P13}
 
 \subsection{Validation layers}
 \label{sec:layers}
@@ -379,6 +392,139 @@ but not what the operator said, such as a rotation through the right angle in th
 passes unchanged, because no layer can compare a command with the speech it came from. A false
 trigger on the reflex path belongs to this class. The safe-failure rate measures how often errors
 avoid it by resolving to \texttt{unknown} or a hold.
+
+\subsection{\added[id=PR]{Hazard analysis and a checkable membership property}}
+\label{sec:hazard}
+
+\added[id=PR]{We analyse the reflex path with STPA~\citep{leveson2012} rather than a failure mode and effects
+analysis (FMEA). An FMEA starts from component failures. Four of the five cases below are failures of
+one component, the spotter, but the fifth involves no failed component: each path and the consumer
+behave as specified, and the hazard arises from their interaction. STPA's types of unsafe control
+action (not provided, provided when unsafe, provided too late or in the wrong order) cover all five
+in one frame. The losses are injury to people and damage to vehicles, and the hazards are H1, a
+pair of vehicles, or a vehicle and a person or obstacle, closer than the collision distance of
+0.35~m; H2, a vehicle brought down where the ground is not known to be clear; and H3, a swarm whose
+state no spoken command can change.}\chcomment[id=PR]{P13}
+\AuditAddedBlock{%
+\begin{itemize}
+\item \emph{Missed hold or abort} (not provided; H1). The swarm continues until the phrase is
+  repeated, which costs at least the phrase again: about 0.77~s, the difference between the medians
+  from keyword onset and offset, or 2.3~m at 3~m/s. The parse path hears the same phrase, but turned
+  3 of 40 stops into a formation command (Section~\ref{sec:res-single}).
+\item \emph{False hold} (provided when unsafe). Lateral motion stops and the vehicles hold position
+  with the potential field active. None of H1--H3 follows directly, and the operator can resume by
+  voice; the cost is availability.
+\item \emph{False abort} (provided when unsafe; H2, H3). Every vehicle descends where it is and stops
+  its motors on contact, and the state machine rejects every later utterance until a manual reset,
+  so the operator cannot redirect by voice a descent onto a person or an obstacle. This is the most
+  severe of the five outcomes and the only one the interface cannot undo.
+\item \emph{Late stop} (too late; H1). Quantified below.
+\item \emph{The stop phrase's own parse} (wrong order; H1). With its number reserved at acceptance,
+  the parse of a hold was applied after the hold, and on one of the 39 detected takes it replaced the
+  hold with a formation change (Section~\ref{sec:res-single}). Reserving the number at the onset of
+  speech closed this: none of the 39 parses was applied after the stop. The cost is an availability
+  one: a false hold during a spoken command now loses that command as well.\AuditID{P13}
+\end{itemize}}
+
+\paragraph{\added[id=PR]{Time saved, from stopping distance.}} \added[id=PR]{From the moment the operator sees a hazard, a
+vehicle at speed $v$ that brakes at $a$ travels}
+\AuditAddedBlock{%
+\begin{equation}
+d(v) = v\,(t_h + t_p) + v\,t_s + \frac{v^2}{2a},
+\label{eq:stopping}
+\end{equation}}
+\added[id=PR]{where $t_h$ is the operator's reaction time, $t_p$ the duration of the phrase, and $t_s$ the system's
+latency from the keyword offset to publication. Only $t_s$ depends on the path, so routing a stop
+through the parse path adds $\Delta d = v\,\Delta t_s$. On the 40 keyword takes, $t_s$ was 545~ms at
+p95 on the reflex path and 2,537~ms on the parse path alone (Section~\ref{sec:res-single}), so
+$\Delta t_s = 1.99$~s; the parse-path figure leaves out the three takes it never stopped. At the
+validator's ceiling of 2.0~m/s, which bounds a \texttt{move}, $\Delta d = 4.0$~m; at the backends'
+3~m/s, which a formation change can reach, 6.0~m; these are 11 and 17 times the collision distance,
+and a closing pair doubles them. The speed at which $\Delta d$ equals 0.35~m is 0.18~m/s (0.16~m/s on
+the medians), below the validator's floor of 0.2~m/s, so a stop's latency is decisive at every speed
+the validator admits, though only narrowly at that floor, where $\Delta d = 0.40$~m. With $a =
+4$~m/s$^2$, the reflex path's share of Eq.~\eqref{eq:stopping}, $v\,t_s + v^2/2a$ at p95, is 1.6~m
+at 2.0~m/s and 2.8~m at 3~m/s, against 5.6~m and 8.7~m through the parse path. The reflex
+budget can be read the same way: 150~ms is 0.30--0.45~m of travel at 2--3~m/s, about the
+collision distance, although it was not set that way.}\chcomment[id=PR]{P13}
+
+\begin{table}
+\AuditAddedBlock{%
+\caption{The membership property applied to the ten intents. $\kappa = (m, z, \ell)$ in the flying
+state (\texttt{takeoff}: landed); $S$: the stopping set; $\prec$: strictly below. \texttt{land}
+descends in place, like \texttt{abort}. In the landing state, \texttt{abort} is the only legal stop
+and so is minimal, but it adds only the latch to the descent under way. \texttt{abort} stays on the
+reflex path as a stated exception.\AuditID{P13}}
+\label{tab:property}
+\footnotesize\setlength{\tabcolsep}{2pt}
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}>{\raggedright\arraybackslash}p{1.45cm}cclll@{}}
+\toprule
+Intent & $\kappa$ & In $S$ & Minimal in $S$ & As built & Property \\
+\midrule
+\texttt{hover}     & (0,0,0) & Yes & Yes & Reflex & Reflex \\
+\texttt{abort}     & (0,1,1) & Yes & No, \texttt{hover} $\prec$ it & Reflex & Parse \\
+\texttt{land}      & (0,1,0) & Yes & No, \texttt{hover} $\prec$ it & Parse & Parse \\
+\texttt{set\_param} & (0,0,0) & No & -- & Parse & Parse \\
+\texttt{unknown}   & -- & No & -- & -- & -- \\
+\texttt{takeoff}, \texttt{move}, \texttt{altitude}, \texttt{rotate}, \texttt{formation} & $m$ or $z = 1$ & No & -- & Parse & Parse \\
+\bottomrule
+\end{tabular*}}
+\end{table}
+
+\paragraph{\added[id=PR]{A checkable property.}} \added[id=PR]{For a state $s$ of the flight state machine, let the
+\emph{stopping set} $S(s)$ hold the commands legal in $s$ after which every vehicle's commanded
+lateral velocity is zero. Describe a command $c$ legal in $s$ by its kinetic consequence $\kappa(c,
+s) = (m, z, \ell) \in \{0,1\}^3$: $m = 1$ if it commands a horizontal translation or a rotation, $z =
+1$ if it commands a change of height, and $\ell = 1$ if it enters a state that no spoken command can
+leave. Order commands componentwise, $c \preceq c'$ if and only if $\kappa(c, s) \leq \kappa(c',
+s)$. The reflex path may publish $c$ only if, in every state in which $c$ is legal, $c \in S(s)$
+and no $c' \in S(s)$ satisfies $c' \prec c$. The latency test holds for every member of $S(s)$ by
+the bound above, and minimality replaces the fail-safe test: an unprompted minimal stop does the
+least any stop does. The property quantifies over ten intents and five states, and a unit test checks it
+against the state machine's legality table. Table~\ref{tab:property} gives the result.
+\texttt{hover} passes. \texttt{abort} fails, for the reason \texttt{land} fails: its time-critical
+part, stopping lateral motion, is exactly a hold, and what it adds, a descent and a latch, is
+neither time-critical nor minimal.}\chcomment[id=PR]{P13}
+
+\paragraph{\added[id=PR]{Why the abort stays on the reflex path.}} \added[id=PR]{The property rejects the abort, and we
+keep it on the reflex path as a stated exception. The case against it is the analysis above: a hold
+already removes the time-critical part, and a false abort is the most severe and least recoverable
+outcome of the five. The case for it is a hazard that a hold does not remove, such as a vehicle at head
+height near a person, where the operator needs a descent at once and not after a confirmation. The
+alternative would publish a hold at once and the abort only on a second detection. That costs at
+least a repetition of the phrase, and an operator who does not repeat it leaves the swarm in the air;
+it has not been implemented or measured, and the recorded takes hold one phrase each. A parse of the
+same phrase is a poor confirmation: the ordering rule now discards it, it arrives about 2.4~s later,
+and only 18 of the 20 abort parses were correct. The exception has a price, which we accept and
+state: a false abort lands the swarm and removes voice control until a manual reset, and its
+acceptable rate has not been set. A vehicle that no longer obeys its controller is not a case for a
+voice abort at all, since the abort travels through the same controller.}\chcomment[id=PR]{P13}
+
+\paragraph{\added[id=PR]{Runtime assurance and the emergency stop.}} \added[id=PR]{In runtime-assurance terms the parse path
+is the complex function, a learned interpreter whose output is not verified. Simplex architectures
+pair such a function with a simpler safe channel and a switch: Black-Box Simplex replaces static
+verification of the backup controller with a runtime check and needs no internal knowledge of either
+controller~\citep{bbsimplex2022}; ASTM F3269-21 sets out the components of a run-time assurance
+architecture for aircraft with complex functions, including a safety monitor, a switch and a
+recovery function~\citep{astmf3269}; and RoboGuard checks a language-model robot's plans against
+safety constraints before execution~\citep{roboguard2025}. The reflex path is a safe channel of this
+kind with two differences. Its switch is the operator's voice, not a monitor of the vehicles' state,
+so it covers what the operator sees and the system does not; and its trigger is not verified, so
+its safety rests on what it may publish, not on how reliably it detects. It also runs in the same
+software, on the same board and over the same link as the path it preempts. It is therefore not an
+emergency stop function in the sense of ISO 13850~\citep{iso13850}: a voice stop supplements, and does
+not replace, the autopilot's own failsafes and a hardware emergency stop independent of this
+software. A deployment would need both, and this work built neither.}\chcomment[id=PR]{P13}
+
+\paragraph{\added[id=PR]{The keyword budgets.}} \added[id=PR]{The false-accept budget of at most 1/h and the false-reject
+budget of at most 0.10 were fixed before any measurement and are not derived from this analysis,
+which shows what a derivation would need. A false hold costs availability, so its rate is an
+availability budget. A false abort is the most severe outcome, so with the abort on the
+reflex path its class needs its own, much lower budget, set from an accepted rate of uncommanded
+landings, which this work does not have; the exception above therefore rests on a budget not yet set. A
+missed stop costs at least one repetition, 1.5--2.3~m of travel at 2--3~m/s for the phrase alone,
+several times the collision distance, so no false-reject rate makes the voice stop sufficient on its
+own: the budget sets how often the operator falls back on the hardware stop, not the risk.}\chcomment[id=PR]{P13}
 
 \subsection{Latency budget and core allocation}
 \label{sec:budget}
@@ -1002,13 +1148,17 @@ keyword-spotter reflex path can preempt that model: every trigger during inferen
 decode, and the board added only \replaced[id=PR]{5--18}{6--18}~ms before the stop was published on the bus, although neither keyword-spotter error
 criterion is demonstrated and recovery after preemption missed its budget.
 A two-test membership rule restricts the reflex path to a hold and an abort, and three validation
-layers bound what a wrong command can do. The system misses its latency budgets on both paths, before the board's share on the reflex path
+layers bound what a wrong command can do.\added[id=PR]{ Tightened into a property and checked against a hazard
+analysis, the rule keeps the hold; the abort stays on the reflex path as a stated exception, which
+accepts that a false abort lands the swarm and removes voice control until a manual reset. The voice
+stop supplements, and does not replace, a hardware emergency stop.}\chcomment[id=PR]{P13} The system misses its latency budgets on both paths, before the board's share on the reflex path
 and in speech recognition and uncached prefill on the parse path, and misses its recognition targets under
 rotor noise, with errors that do not become safer as noise rises.\added[id=PR]{ Routed through the parse path
 alone, a stop waited 612~ms at the median for the endpointer and was misrecognised in 3 of 40 takes.}\chcomment[id=PR]{P12}\added[id=PR]{ Reserving the parse-path number at the onset of speech stopped the parse of a stop phrase being applied after the stop, on 19 of 39 takes before and none after. A hold at voice onset was about 900~ms faster than the keyword but fired on every ordinary command.}\chcomment[id=PR]{P12}
 Future work will reduce the spotter's
 decision delay\added[id=PR]{ and re-measure it against a forced alignment}\deleted[id=PR]{, reserve the parse-path sequence
-number at the onset of speech}\chcomment[id=PR]{P12}, cache the prompt prefix after a parity check, replace the server's polling with an
+number at the onset of speech}\chcomment[id=PR]{P12}\added[id=PR]{, set a budget for false aborts and measure a hold
+with the abort on a second detection against it}\chcomment[id=PR]{P13}, cache the prompt prefix after a parity check, replace the server's polling with an
 explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate, build the
 link from the state machine to the controller, replace the integrator clamp with a force-level
 mechanism, and run the complete chain live, with networking disabled and on physical vehicles.
