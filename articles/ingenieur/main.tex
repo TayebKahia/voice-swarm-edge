@@ -692,7 +692,13 @@ backend. Each trial drew initial positions from a normal distribution with a sta
 which that fraction reaches 0.85. \replaced[id=PR]{Convergence times are summarised by median and interquartile
 range. The three formations reuse the same 50 spawns in a deterministic simulator, so no
 significance test is reported.}{Convergence times are compared by one-way ANOVA with Tukey's
-comparison.}\chcomment[id=PR]{P17}
+comparison.}\chcomment[id=PR]{P17} \added[id=PR]{To test whether the potential field alone keeps the vehicles apart, the 150 trials
+were repeated without the clamp, once from the same spawns and once from spawns redrawn, from the same
+distribution and seed, until no pair started closer than 0.80~m (6 draws at the median, at most 59).
+Raising the standard deviation instead would have needed about 5~m to clear every seed, as wide as the
+circle itself. Each trial is split at its first tick with no pair under 0.80~m; the ticks after it are in
+flight. With the clamp on, in-flight distances are read before the clamp acts. Medians carry
+order-statistic 95\% intervals, and counts carry exact binomial intervals.}\chcomment[id=PR]{P14}
 
 % =============================================================================
 \section{Results}
@@ -1029,6 +1035,45 @@ The other 9 occurred in flight, all in one circle trial. The closest approach of
 spawn held no close pair, the vehicles stayed 0.82--0.89~m apart without the clamp acting.}{The closest approach was 0.800~m, the clamp distance, in each
 of those 144 trials, and 0.82--0.89~m in the other six.}\chcomment[id=PR]{P14}
 
+\AuditAddedBlock{%
+\begin{table*}
+\caption{Separation with and without the clamp, 50 seeds per formation, 60~s per trial on the kinematic
+backend. Spawn: the protocol's, or redrawn until no pair is within 0.80~m. Collisions: trials with a pair
+under 0.35~m at any tick (with the clamp on, after the clamp, so zero by construction). Separated: time to
+the first tick with no pair under 0.80~m. In flight: the ticks after it; with the clamp on, the state before
+the clamp acts, from the second tick. Medians with order-statistic 95\% intervals; counts with exact
+95\% intervals.\AuditID{P14}}
+\label{tab:clamp-off}
+\footnotesize
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllll@{}}
+\toprule
+Clamp, spawn & Formation & Collisions & Separated (s), & In-flight closest (m), & Back under 0.80~m \\
+ & & & median [CI]; max & median [CI]; min & in flight \\
+\midrule
+On, protocol & circle & 0/50 [0.00, 0.07] & first tick & 0.804 [0.803, 0.804]; 0.800 & 1/50 [0.00, 0.11] \\
+ & line & 0/50 [0.00, 0.07] & first tick & 0.804 [0.803, 0.805]; 0.800 & 0/50 [0.00, 0.07] \\
+ & wedge & 0/50 [0.00, 0.07] & first tick & 0.804 [0.804, 0.805]; 0.800 & 0/50 [0.00, 0.07] \\
+\midrule
+Off, protocol & circle & 16/50 [0.20, 0.47] & 0.30 [0.26, 0.34]; 0.46 & 0.816 [0.808, 0.823]; 0.801 & 0/50 [0.00, 0.07] \\
+ & line & 16/50 [0.20, 0.47] & 0.30 [0.24, 0.34]; 0.46 & 0.821 [0.814, 0.824]; 0.744 & 1/50 [0.00, 0.11] \\
+ & wedge & 16/50 [0.20, 0.47] & 0.32 [0.24, 0.32]; 0.56 & 0.821 [0.814, 0.825]; 0.800 & 0/50 [0.00, 0.07] \\
+\midrule
+Off, separated & circle & 0/50 [0.00, 0.07] & at spawn & 0.911 [0.869, 0.957]; 0.802 & 0/50 [0.00, 0.07] \\
+ & line & 0/50 [0.00, 0.07] & at spawn & 0.911 [0.868, 0.956]; 0.803 & 0/50 [0.00, 0.07] \\
+ & wedge & 0/50 [0.00, 0.07] & at spawn & 0.911 [0.868, 0.958]; 0.803 & 0/50 [0.00, 0.07] \\
+\bottomrule
+\end{tabular*}
+\end{table*}}
+
+\added[id=PR]{Without the clamp (Table~\ref{tab:clamp-off}), the potential field alone separated every close spawn
+pair, within 0.56~s at the slowest and 0.30~s at the median. The 16 seeds whose spawn places a pair inside
+0.35~m register as collisions in every formation (16/50, 95\% interval [0.20, 0.47]), all on those first
+ticks; no pair came within 0.35~m in flight in any of the 150 trials. In flight, the closest approach had
+a median of 0.82~m, and one line trial went back under 0.80~m, for 12 ticks (0.24~s), to 0.744~m. From
+spawns with no pair inside 0.80~m, no pair came closer than 0.80~m in any trial, and the closest approach
+(median 0.911~m) was the spawn distance itself: the vehicles move apart towards slots at least 2~m apart,
+so the field is barely exercised. Formation accuracy stayed at 1.000 in every trial of both ablations.}\chcomment[id=PR]{P14}
+
 \subsection{\added[id=PR]{Closed loop}}
 \label{sec:res-closed}
 
@@ -1096,7 +1141,7 @@ Formation control, five drones & 150/150 trials converged & met \\
 \AuditDeletedRow{\deleted[id=PR]{Two simulation backends} & \deleted[id=PR]{Smoke tests pass, same gains} & \deleted[id=PR]{met} \\}
 \AuditDeletedRow{\deleted[id=PR]{Flight state machine} & \deleted[id=PR]{Every legality case tested} & \deleted[id=PR]{met} \\}
 \AuditDeletedRow{\deleted[id=PR]{Per-stage attribution} & \deleted[id=PR]{All five stages, p50 and p95} & \deleted[id=PR]{met} \\}
-Collisions & 0 in 150 trials (clamp) & \replaced[id=PR]{by constr.}{met} \\
+Collisions & 0 in 150 trials (clamp)\added[id=PR]{; clamp off, 0 in flight, 48 trials at spawn} & \replaced[id=PR]{by constr.}{met} \\
 Formation accuracy $\geq 0.85$ & 1.000 in every trial & met \\
 Reflex latency $\leq 150$~ms & 545 idle, \replaced[id=PR]{556}{547} loaded & missed \\
 End to end $\leq 2{,}500$~ms & 3,122 & missed \\
@@ -1204,8 +1249,11 @@ construction: a collision is counted after the clamp, which leaves no pair close
 clamp's interventions are not evidence against the potential field either. Almost all of them
 separated vehicles that spawned too close, before the controller acted; only 9, all in one circle
 trial, came in flight, and in the six trials whose spawn held no close pair the field kept the
-vehicles apart unaided. Whether the field alone avoids collisions in general was not tested; a run without the clamp
-would test it.}{Zero collisions in 150 trials
+vehicles apart unaided. Without the clamp, the field separated every close spawn pair within 0.56~s and
+let no pair within 0.35~m in flight in any of the 150 trials; one trial went back under 0.80~m, to
+0.744~m. The protocol never sends vehicles across each other's paths, however, and from separated spawns
+the closest approach was the spawn distance itself, so whether the field avoids collisions on crossing
+paths or during a change of formation remains untested.}{Zero collisions in 150 trials
 follows from the clamp, not from the potential field: the field alone let pairs inside 0.80~m 432
 times, in 144 of 150 trials, and in every trial in which the clamp intervened the closest approach
 equals the clamp distance.}\chcomment[id=PR]{P14} A real
@@ -1271,7 +1319,7 @@ number at the onset of speech}\chcomment[id=PR]{P12}\added[id=PR]{, set a budget
 with the abort on a second detection against it}\chcomment[id=PR]{P13}, cache the prompt prefix after a parity check, replace the server's polling with an
 explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate,\deleted[id=PR]{ build the
 link from the state machine to the controller,} replace the integrator clamp with a force-level
-mechanism, \added[id=PR]{give the hold a braking target and retune the gains on the rigid-body backend,
+mechanism, \added[id=PR]{test the potential field without the clamp on crossing paths and changes of formation, }\chcomment[id=PR]{P14}\added[id=PR]{give the hold a braking target and retune the gains on the rigid-body backend,
 measure the spotter on live speech from several speakers, acknowledge or repeat stop messages over a
 lossy link, }and run the complete chain\deleted[id=PR]{ live, with networking disabled and} on physical vehicles.\chcomment[id=PR]{P11}
 
