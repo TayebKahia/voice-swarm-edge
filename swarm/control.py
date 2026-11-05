@@ -22,9 +22,13 @@ controller carries a mechanism that *can* be defended and the metric reports how
 often it had to act.
 
 That is why two numbers are recorded, not one: `clamp_activations` (how often the
-potential field was insufficient) and `collisions` (how often two drones were closer
-than `COLLISION_DISTANCE` after the clamp, which should be zero by construction).
-Reporting only the second would hide the work the first is doing.
+clamp found a pair closer than `CLAMP_DISTANCE`) and `collisions` (how often two drones
+were closer than `COLLISION_DISTANCE` after the clamp, which should be zero by
+construction). Reporting only the second would hide the work the first is doing.
+An activation is not by itself a failure of the potential field: in Exp-4 nearly all
+of them separate drones that spawn too close, on the first tick, before the controller
+has acted (`results/exp4_spawn.md`). The field's own record is the clamp-off run in
+`results/exp4_clamp_ablation.md`.
 """
 
 from __future__ import annotations

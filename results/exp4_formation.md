@@ -8,7 +8,7 @@
 | line | 50 | 1.000 +/- 0.000 | 1.000 | 50/50 | 1.00 | 3.26 [3.21, 3.32] | 0 | 141 |
 | wedge | 50 | 1.000 +/- 0.000 | 1.000 | 50/50 | 1.00 | 2.30 [2.21, 2.38] | 0 | 141 |
 
-**NFR-12 --- collisions: 0 observed** across all trials (a collision is a pair closer than 0.35 m). The closest approach recorded was 0.800 m against a clamp distance of 0.8 m. The hard geometric clamp at the integrator resolved 432 pair violations, which is the honest companion figure: each one is an occasion on which the artificial potential field alone did not keep two drones apart. The claim is therefore zero collisions *observed*, backed by that clamp --- not zero collisions guaranteed by APF, which with discrete timesteps and bounded acceleration would be unprovable.
+**NFR-12 --- collisions: 0 observed** across all trials (a collision is a pair closer than 0.35 m). The closest approach recorded was 0.800 m against a clamp distance of 0.8 m. The hard geometric clamp at the integrator resolved 432 pair violations. Most of them are not failures of the potential field: they separate drones that spawn closer than the clamp distance, on the first tick, before the controller has acted (`results/exp4_spawn.md`). What the field does without the clamp is measured separately (`results/exp4_clamp_ablation.md`). The claim is therefore zero collisions *observed*, backed by that clamp --- not zero collisions guaranteed by APF, which with discrete timesteps and bounded acceleration would be unprovable.
 
 **NFR-13 --- FA >= 0.85** (fraction of drones within tau = 0.5 m of their *assigned* slot, averaged over the final 5 s).
 

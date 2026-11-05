@@ -9,10 +9,13 @@ first, or start each session from that branch. Prompt 4 checks for `113ce2b` and
 missing.
 
 **Order and status.**
-- 1 (P4), 2 (Pi session, P12), 3 (P13) and 4 (P11, commits `6d19b70` and `9ccee75`) are done and
+- 1 (P4), 2 (Pi session, P12), 3 (P13), 4 (P11, commits `6d19b70` and `9ccee75`), 5 (P18
+  abstract, `6dc931b`) and 6 (P14 clamp-off ablation, `551435b` and `cac45c1`) are done and
   committed. Their prompts are kept as a record.
-- 5 (P18 abstract), 6 (P14 clamp-off ablation) and 7 (P15 forced-alignment anchor) are next, in
-  that order; none needs the microphone, and only 7 may need the Pi.
+- 7 (P15 forced-alignment anchor) is next; it does not need the microphone and may need the Pi.
+- P14 left one question open: whether the field alone avoids collisions on crossing paths or
+  during a change of formation. The Exp-4 protocol never sends vehicles across each other's
+  paths, so the clamp-off runs could not test it. The article states this as future work.
 - 8 (admin) last, once the content is final. The spotter retrain stays optional, at the end.
 
 ---

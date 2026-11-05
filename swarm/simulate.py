@@ -121,8 +121,9 @@ def run_trial(spec: TrialSpec, env: SwarmEnv | None = None,
         closest = float(distance.min())
         min_pair = min(min_pair, closest)
         # Counted AFTER the clamp: this is the number NFR-12 reports, and it is
-        # expected to be zero by construction. `clamp_activations` is the honest
-        # companion figure -- how often the potential field alone was not enough.
+        # expected to be zero by construction. `clamp_activations` is the companion
+        # figure -- how often the clamp had to act, including on spawn overlaps that
+        # predate any control (see `swarm.control`).
         if closest < COLLISION_DISTANCE:
             collisions += 1
 
