@@ -1,0 +1,1391 @@
+{
+  "threshold": 0.999,
+  "seed": 42,
+  "noise": "DREGON hovering, eval partition (last 30%)",
+  "reference_active_rms": 0.01748323655459061,
+  "conditions": {
+    "clean": {
+      "rows": [
+        {
+          "class": "swarm_hold",
+          "n": 20,
+          "missed": 1,
+          "frr": 0.05,
+          "frr_ci95": [
+            0.0012650894979498047,
+            0.24873276277202777
+          ],
+          "fired_own": 19,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 229.99999999999997,
+          "delay_p95_ms": 550.0,
+          "missed_takes": [
+            "w03"
+          ]
+        },
+        {
+          "class": "swarm_abort",
+          "n": 20,
+          "missed": 0,
+          "frr": 0.0,
+          "frr_ci95": [
+            0.0,
+            0.1684334709830853
+          ],
+          "fired_own": 20,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 160.00000000000014,
+          "delay_p95_ms": 429.9999999999997,
+          "missed_takes": []
+        }
+      ],
+      "mix": {}
+    },
+    "20 dB": {
+      "rows": [
+        {
+          "class": "swarm_hold",
+          "n": 20,
+          "missed": 0,
+          "frr": 0.0,
+          "frr_ci95": [
+            0.0,
+            0.1684334709830853
+          ],
+          "fired_own": 20,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 140.00000000000057,
+          "delay_p95_ms": 260.0000000000002,
+          "missed_takes": []
+        },
+        {
+          "class": "swarm_abort",
+          "n": 20,
+          "missed": 0,
+          "frr": 0.0,
+          "frr_ci95": [
+            0.0,
+            0.1684334709830853
+          ],
+          "fired_own": 20,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 150.00000000000014,
+          "delay_p95_ms": 349.99999999999966,
+          "missed_takes": []
+        }
+      ],
+      "mix": {
+        "w01": {
+          "noise_gain": 0.01111,
+          "peak_attenuation": 1.0
+        },
+        "w02": {
+          "noise_gain": 5.713756,
+          "peak_attenuation": 1.0
+        },
+        "w03": {
+          "noise_gain": 0.041817,
+          "peak_attenuation": 1.0
+        },
+        "w04": {
+          "noise_gain": 0.004236,
+          "peak_attenuation": 1.0
+        },
+        "w05": {
+          "noise_gain": 0.006768,
+          "peak_attenuation": 1.0
+        },
+        "w06": {
+          "noise_gain": 0.029312,
+          "peak_attenuation": 1.0
+        },
+        "w07": {
+          "noise_gain": 0.02315,
+          "peak_attenuation": 1.0
+        },
+        "w08": {
+          "noise_gain": 0.014387,
+          "peak_attenuation": 1.0
+        },
+        "w09": {
+          "noise_gain": 0.019106,
+          "peak_attenuation": 1.0
+        },
+        "w10": {
+          "noise_gain": 2.376851,
+          "peak_attenuation": 1.0
+        },
+        "w11": {
+          "noise_gain": 0.304709,
+          "peak_attenuation": 1.0
+        },
+        "w12": {
+          "noise_gain": 0.010175,
+          "peak_attenuation": 1.0
+        },
+        "w13": {
+          "noise_gain": 1.970439,
+          "peak_attenuation": 1.0
+        },
+        "w14": {
+          "noise_gain": 0.014972,
+          "peak_attenuation": 1.0
+        },
+        "w15": {
+          "noise_gain": 0.007669,
+          "peak_attenuation": 1.0
+        },
+        "w16": {
+          "noise_gain": 0.011618,
+          "peak_attenuation": 1.0
+        },
+        "w17": {
+          "noise_gain": 0.010678,
+          "peak_attenuation": 1.0
+        },
+        "w18": {
+          "noise_gain": 0.0255,
+          "peak_attenuation": 1.0
+        },
+        "w19": {
+          "noise_gain": 0.028668,
+          "peak_attenuation": 1.0
+        },
+        "w20": {
+          "noise_gain": 7.700078,
+          "peak_attenuation": 1.0
+        },
+        "w21": {
+          "noise_gain": 0.056003,
+          "peak_attenuation": 1.0
+        },
+        "w22": {
+          "noise_gain": 0.055422,
+          "peak_attenuation": 1.0
+        },
+        "w23": {
+          "noise_gain": 0.013983,
+          "peak_attenuation": 1.0
+        },
+        "w24": {
+          "noise_gain": 0.022916,
+          "peak_attenuation": 1.0
+        },
+        "w25": {
+          "noise_gain": 0.01038,
+          "peak_attenuation": 1.0
+        },
+        "w26": {
+          "noise_gain": 0.041272,
+          "peak_attenuation": 1.0
+        },
+        "w27": {
+          "noise_gain": 0.016483,
+          "peak_attenuation": 1.0
+        },
+        "w28": {
+          "noise_gain": 0.011914,
+          "peak_attenuation": 1.0
+        },
+        "w29": {
+          "noise_gain": 0.048829,
+          "peak_attenuation": 1.0
+        },
+        "w30": {
+          "noise_gain": 0.020687,
+          "peak_attenuation": 1.0
+        },
+        "w31": {
+          "noise_gain": 0.103327,
+          "peak_attenuation": 1.0
+        },
+        "w32": {
+          "noise_gain": 0.042502,
+          "peak_attenuation": 1.0
+        },
+        "w33": {
+          "noise_gain": 1.165294,
+          "peak_attenuation": 1.0
+        },
+        "w34": {
+          "noise_gain": 13.349591,
+          "peak_attenuation": 1.0
+        },
+        "w35": {
+          "noise_gain": 0.015486,
+          "peak_attenuation": 1.0
+        },
+        "w36": {
+          "noise_gain": 0.01347,
+          "peak_attenuation": 1.0
+        },
+        "w37": {
+          "noise_gain": 0.016574,
+          "peak_attenuation": 1.0
+        },
+        "w38": {
+          "noise_gain": 5.812573,
+          "peak_attenuation": 1.0
+        },
+        "w39": {
+          "noise_gain": 0.029295,
+          "peak_attenuation": 1.0
+        },
+        "w40": {
+          "noise_gain": 0.022301,
+          "peak_attenuation": 1.0
+        }
+      }
+    },
+    "10 dB": {
+      "rows": [
+        {
+          "class": "swarm_hold",
+          "n": 20,
+          "missed": 0,
+          "frr": 0.0,
+          "frr_ci95": [
+            0.0,
+            0.1684334709830853
+          ],
+          "fired_own": 20,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 60.0000000000005,
+          "delay_p95_ms": 310.0000000000003,
+          "missed_takes": []
+        },
+        {
+          "class": "swarm_abort",
+          "n": 20,
+          "missed": 1,
+          "frr": 0.05,
+          "frr_ci95": [
+            0.0012650894979498047,
+            0.24873276277202777
+          ],
+          "fired_own": 19,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 160.00000000000014,
+          "delay_p95_ms": 440.00000000000017,
+          "missed_takes": [
+            "w04"
+          ]
+        }
+      ],
+      "mix": {
+        "w01": {
+          "noise_gain": 0.035132,
+          "peak_attenuation": 1.0
+        },
+        "w02": {
+          "noise_gain": 18.068483,
+          "peak_attenuation": 1.0
+        },
+        "w03": {
+          "noise_gain": 0.132237,
+          "peak_attenuation": 1.0
+        },
+        "w04": {
+          "noise_gain": 0.013396,
+          "peak_attenuation": 1.0
+        },
+        "w05": {
+          "noise_gain": 0.021403,
+          "peak_attenuation": 1.0
+        },
+        "w06": {
+          "noise_gain": 0.092694,
+          "peak_attenuation": 1.0
+        },
+        "w07": {
+          "noise_gain": 0.073207,
+          "peak_attenuation": 1.0
+        },
+        "w08": {
+          "noise_gain": 0.045494,
+          "peak_attenuation": 1.0
+        },
+        "w09": {
+          "noise_gain": 0.060419,
+          "peak_attenuation": 1.0
+        },
+        "w10": {
+          "noise_gain": 7.516264,
+          "peak_attenuation": 1.0
+        },
+        "w11": {
+          "noise_gain": 0.963575,
+          "peak_attenuation": 1.0
+        },
+        "w12": {
+          "noise_gain": 0.032177,
+          "peak_attenuation": 1.0
+        },
+        "w13": {
+          "noise_gain": 6.231075,
+          "peak_attenuation": 1.0
+        },
+        "w14": {
+          "noise_gain": 0.047345,
+          "peak_attenuation": 1.0
+        },
+        "w15": {
+          "noise_gain": 0.024252,
+          "peak_attenuation": 1.0
+        },
+        "w16": {
+          "noise_gain": 0.036739,
+          "peak_attenuation": 1.0
+        },
+        "w17": {
+          "noise_gain": 0.033768,
+          "peak_attenuation": 1.0
+        },
+        "w18": {
+          "noise_gain": 0.080637,
+          "peak_attenuation": 1.0
+        },
+        "w19": {
+          "noise_gain": 0.090656,
+          "peak_attenuation": 1.0
+        },
+        "w20": {
+          "noise_gain": 24.349785,
+          "peak_attenuation": 1.0
+        },
+        "w21": {
+          "noise_gain": 0.177096,
+          "peak_attenuation": 1.0
+        },
+        "w22": {
+          "noise_gain": 0.175261,
+          "peak_attenuation": 1.0
+        },
+        "w23": {
+          "noise_gain": 0.044219,
+          "peak_attenuation": 1.0
+        },
+        "w24": {
+          "noise_gain": 0.072467,
+          "peak_attenuation": 1.0
+        },
+        "w25": {
+          "noise_gain": 0.032823,
+          "peak_attenuation": 1.0
+        },
+        "w26": {
+          "noise_gain": 0.130512,
+          "peak_attenuation": 1.0
+        },
+        "w27": {
+          "noise_gain": 0.052124,
+          "peak_attenuation": 1.0
+        },
+        "w28": {
+          "noise_gain": 0.037675,
+          "peak_attenuation": 1.0
+        },
+        "w29": {
+          "noise_gain": 0.15441,
+          "peak_attenuation": 1.0
+        },
+        "w30": {
+          "noise_gain": 0.065417,
+          "peak_attenuation": 1.0
+        },
+        "w31": {
+          "noise_gain": 0.326749,
+          "peak_attenuation": 1.0
+        },
+        "w32": {
+          "noise_gain": 0.134404,
+          "peak_attenuation": 1.0
+        },
+        "w33": {
+          "noise_gain": 3.684983,
+          "peak_attenuation": 1.0
+        },
+        "w34": {
+          "noise_gain": 42.215114,
+          "peak_attenuation": 1.0
+        },
+        "w35": {
+          "noise_gain": 0.04897,
+          "peak_attenuation": 1.0
+        },
+        "w36": {
+          "noise_gain": 0.042595,
+          "peak_attenuation": 1.0
+        },
+        "w37": {
+          "noise_gain": 0.052411,
+          "peak_attenuation": 1.0
+        },
+        "w38": {
+          "noise_gain": 18.380968,
+          "peak_attenuation": 1.0
+        },
+        "w39": {
+          "noise_gain": 0.09264,
+          "peak_attenuation": 1.0
+        },
+        "w40": {
+          "noise_gain": 0.070522,
+          "peak_attenuation": 1.0
+        }
+      }
+    },
+    "5 dB": {
+      "rows": [
+        {
+          "class": "swarm_hold",
+          "n": 20,
+          "missed": 0,
+          "frr": 0.0,
+          "frr_ci95": [
+            0.0,
+            0.1684334709830853
+          ],
+          "fired_own": 20,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 149.99999999999991,
+          "delay_p95_ms": 399.9999999999999,
+          "missed_takes": []
+        },
+        {
+          "class": "swarm_abort",
+          "n": 20,
+          "missed": 0,
+          "frr": 0.0,
+          "frr_ci95": [
+            0.0,
+            0.1684334709830853
+          ],
+          "fired_own": 20,
+          "fired_other": 0,
+          "fired_other_takes": [],
+          "delay_p50_ms": 160.00000000000014,
+          "delay_p95_ms": 460.0000000000004,
+          "missed_takes": []
+        }
+      ],
+      "mix": {
+        "w01": {
+          "noise_gain": 0.062474,
+          "peak_attenuation": 1.0
+        },
+        "w02": {
+          "noise_gain": 32.130812,
+          "peak_attenuation": 1.0
+        },
+        "w03": {
+          "noise_gain": 0.235154,
+          "peak_attenuation": 1.0
+        },
+        "w04": {
+          "noise_gain": 0.023822,
+          "peak_attenuation": 1.0
+        },
+        "w05": {
+          "noise_gain": 0.038061,
+          "peak_attenuation": 1.0
+        },
+        "w06": {
+          "noise_gain": 0.164835,
+          "peak_attenuation": 1.0
+        },
+        "w07": {
+          "noise_gain": 0.130182,
+          "peak_attenuation": 1.0
+        },
+        "w08": {
+          "noise_gain": 0.080902,
+          "peak_attenuation": 1.0
+        },
+        "w09": {
+          "noise_gain": 0.107441,
+          "peak_attenuation": 1.0
+        },
+        "w10": {
+          "noise_gain": 13.366017,
+          "peak_attenuation": 1.0
+        },
+        "w11": {
+          "noise_gain": 1.713505,
+          "peak_attenuation": 1.0
+        },
+        "w12": {
+          "noise_gain": 0.05722,
+          "peak_attenuation": 1.0
+        },
+        "w13": {
+          "noise_gain": 11.080593,
+          "peak_attenuation": 1.0
+        },
+        "w14": {
+          "noise_gain": 0.084193,
+          "peak_attenuation": 1.0
+        },
+        "w15": {
+          "noise_gain": 0.043127,
+          "peak_attenuation": 1.0
+        },
+        "w16": {
+          "noise_gain": 0.065333,
+          "peak_attenuation": 1.0
+        },
+        "w17": {
+          "noise_gain": 0.060049,
+          "peak_attenuation": 1.0
+        },
+        "w18": {
+          "noise_gain": 0.143395,
+          "peak_attenuation": 1.0
+        },
+        "w19": {
+          "noise_gain": 0.161212,
+          "peak_attenuation": 1.0
+        },
+        "w20": {
+          "noise_gain": 43.300721,
+          "peak_attenuation": 1.0
+        },
+        "w21": {
+          "noise_gain": 0.314926,
+          "peak_attenuation": 1.0
+        },
+        "w22": {
+          "noise_gain": 0.311663,
+          "peak_attenuation": 1.0
+        },
+        "w23": {
+          "noise_gain": 0.078635,
+          "peak_attenuation": 1.0
+        },
+        "w24": {
+          "noise_gain": 0.128866,
+          "peak_attenuation": 1.0
+        },
+        "w25": {
+          "noise_gain": 0.058369,
+          "peak_attenuation": 1.0
+        },
+        "w26": {
+          "noise_gain": 0.232087,
+          "peak_attenuation": 1.0
+        },
+        "w27": {
+          "noise_gain": 0.092691,
+          "peak_attenuation": 1.0
+        },
+        "w28": {
+          "noise_gain": 0.066996,
+          "peak_attenuation": 1.0
+        },
+        "w29": {
+          "noise_gain": 0.274584,
+          "peak_attenuation": 1.0
+        },
+        "w30": {
+          "noise_gain": 0.11633,
+          "peak_attenuation": 1.0
+        },
+        "w31": {
+          "noise_gain": 0.581051,
+          "peak_attenuation": 1.0
+        },
+        "w32": {
+          "noise_gain": 0.239008,
+          "peak_attenuation": 1.0
+        },
+        "w33": {
+          "noise_gain": 6.55293,
+          "peak_attenuation": 1.0
+        },
+        "w34": {
+          "noise_gain": 75.070267,
+          "peak_attenuation": 1.0
+        },
+        "w35": {
+          "noise_gain": 0.087082,
+          "peak_attenuation": 1.0
+        },
+        "w36": {
+          "noise_gain": 0.075746,
+          "peak_attenuation": 1.0
+        },
+        "w37": {
+          "noise_gain": 0.093202,
+          "peak_attenuation": 1.0
+        },
+        "w38": {
+          "noise_gain": 32.686498,
+          "peak_attenuation": 1.0
+        },
+        "w39": {
+          "noise_gain": 0.16474,
+          "peak_attenuation": 1.0
+        },
+        "w40": {
+          "noise_gain": 0.125408,
+          "peak_attenuation": 1.0
+        }
+      }
+    }
+  },
+  "noise_alone": [
+    {
+      "level": "20 dB",
+      "stream": "channel 0",
+      "seconds": 13.46375,
+      "hours": 0.0037399305555555554,
+      "events": {
+        "swarm_hold": 0,
+        "swarm_abort": 0
+      },
+      "total": 0,
+      "per_hour": 0.0,
+      "per_hour_ci95": [
+        0.0,
+        986.3497194177081
+      ]
+    },
+    {
+      "level": "20 dB",
+      "stream": "all 8 channels",
+      "seconds": 107.71,
+      "hours": 0.029919444444444443,
+      "events": {
+        "swarm_hold": 0,
+        "swarm_abort": 0
+      },
+      "total": 0,
+      "per_hour": 0.0,
+      "per_hour_ci95": [
+        0.0,
+        123.29371492721351
+      ]
+    },
+    {
+      "level": "10 dB",
+      "stream": "channel 0",
+      "seconds": 13.46375,
+      "hours": 0.0037399305555555554,
+      "events": {
+        "swarm_hold": 0,
+        "swarm_abort": 0
+      },
+      "total": 0,
+      "per_hour": 0.0,
+      "per_hour_ci95": [
+        0.0,
+        986.3497194177081
+      ]
+    },
+    {
+      "level": "10 dB",
+      "stream": "all 8 channels",
+      "seconds": 107.71,
+      "hours": 0.029919444444444443,
+      "events": {
+        "swarm_hold": 0,
+        "swarm_abort": 0
+      },
+      "total": 0,
+      "per_hour": 0.0,
+      "per_hour_ci95": [
+        0.0,
+        123.29371492721351
+      ]
+    },
+    {
+      "level": "5 dB",
+      "stream": "channel 0",
+      "seconds": 13.46375,
+      "hours": 0.0037399305555555554,
+      "events": {
+        "swarm_hold": 0,
+        "swarm_abort": 0
+      },
+      "total": 0,
+      "per_hour": 0.0,
+      "per_hour_ci95": [
+        0.0,
+        986.3497194177081
+      ]
+    },
+    {
+      "level": "5 dB",
+      "stream": "all 8 channels",
+      "seconds": 107.71,
+      "hours": 0.029919444444444443,
+      "events": {
+        "swarm_hold": 0,
+        "swarm_abort": 0
+      },
+      "total": 0,
+      "per_hour": 0.0,
+      "per_hour_ci95": [
+        0.0,
+        123.29371492721351
+      ]
+    }
+  ],
+  "peaks": {
+    "clean": {
+      "w01": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w02": {
+        "swarm_hold": 0.0001,
+        "swarm_abort": 1.0
+      },
+      "w03": {
+        "swarm_hold": 0.9977,
+        "swarm_abort": 0.0024
+      },
+      "w04": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w05": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w06": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w07": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.019
+      },
+      "w08": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w09": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0027
+      },
+      "w10": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w11": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w12": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w13": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0059
+      },
+      "w14": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w15": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w16": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w17": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w18": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w19": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.8249
+      },
+      "w20": {
+        "swarm_hold": 0.0027,
+        "swarm_abort": 1.0
+      },
+      "w21": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.003
+      },
+      "w22": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w23": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w24": {
+        "swarm_hold": 0.0007,
+        "swarm_abort": 1.0
+      },
+      "w25": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w26": {
+        "swarm_hold": 0.0003,
+        "swarm_abort": 1.0
+      },
+      "w27": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.1344
+      },
+      "w28": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w29": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w30": {
+        "swarm_hold": 0.0001,
+        "swarm_abort": 1.0
+      },
+      "w31": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.9693
+      },
+      "w32": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w33": {
+        "swarm_hold": 0.9995,
+        "swarm_abort": 0.2369
+      },
+      "w34": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w35": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w36": {
+        "swarm_hold": 0.0001,
+        "swarm_abort": 1.0
+      },
+      "w37": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w38": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w39": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w40": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      }
+    },
+    "20 dB": {
+      "w01": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w02": {
+        "swarm_hold": 0.0021,
+        "swarm_abort": 1.0
+      },
+      "w03": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0099
+      },
+      "w04": {
+        "swarm_hold": 0.0026,
+        "swarm_abort": 0.9999
+      },
+      "w05": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w06": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w07": {
+        "swarm_hold": 0.9999,
+        "swarm_abort": 0.1236
+      },
+      "w08": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w09": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0011
+      },
+      "w10": {
+        "swarm_hold": 0.0005,
+        "swarm_abort": 1.0
+      },
+      "w11": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0017
+      },
+      "w12": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w13": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0096
+      },
+      "w14": {
+        "swarm_hold": 0.0001,
+        "swarm_abort": 1.0
+      },
+      "w15": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w16": {
+        "swarm_hold": 0.003,
+        "swarm_abort": 1.0
+      },
+      "w17": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w18": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w19": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.3233
+      },
+      "w20": {
+        "swarm_hold": 0.0044,
+        "swarm_abort": 1.0
+      },
+      "w21": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0226
+      },
+      "w22": {
+        "swarm_hold": 0.0005,
+        "swarm_abort": 1.0
+      },
+      "w23": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0007
+      },
+      "w24": {
+        "swarm_hold": 0.0215,
+        "swarm_abort": 1.0
+      },
+      "w25": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0005
+      },
+      "w26": {
+        "swarm_hold": 0.0314,
+        "swarm_abort": 1.0
+      },
+      "w27": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.004
+      },
+      "w28": {
+        "swarm_hold": 0.0002,
+        "swarm_abort": 1.0
+      },
+      "w29": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w30": {
+        "swarm_hold": 0.1188,
+        "swarm_abort": 1.0
+      },
+      "w31": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.9947
+      },
+      "w32": {
+        "swarm_hold": 0.0001,
+        "swarm_abort": 1.0
+      },
+      "w33": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.2252
+      },
+      "w34": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w35": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0035
+      },
+      "w36": {
+        "swarm_hold": 0.0055,
+        "swarm_abort": 1.0
+      },
+      "w37": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0918
+      },
+      "w38": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w39": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0001
+      },
+      "w40": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      }
+    },
+    "10 dB": {
+      "w01": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w02": {
+        "swarm_hold": 0.0026,
+        "swarm_abort": 1.0
+      },
+      "w03": {
+        "swarm_hold": 0.9997,
+        "swarm_abort": 0.1844
+      },
+      "w04": {
+        "swarm_hold": 0.8768,
+        "swarm_abort": 0.9952
+      },
+      "w05": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w06": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w07": {
+        "swarm_hold": 0.9997,
+        "swarm_abort": 0.9376
+      },
+      "w08": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w09": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0444
+      },
+      "w10": {
+        "swarm_hold": 0.0002,
+        "swarm_abort": 1.0
+      },
+      "w11": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0009
+      },
+      "w12": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w13": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0001
+      },
+      "w14": {
+        "swarm_hold": 0.0003,
+        "swarm_abort": 1.0
+      },
+      "w15": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0001
+      },
+      "w16": {
+        "swarm_hold": 0.0333,
+        "swarm_abort": 1.0
+      },
+      "w17": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0004
+      },
+      "w18": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w19": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.2885
+      },
+      "w20": {
+        "swarm_hold": 0.1479,
+        "swarm_abort": 1.0
+      },
+      "w21": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0954
+      },
+      "w22": {
+        "swarm_hold": 0.0005,
+        "swarm_abort": 1.0
+      },
+      "w23": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.8913
+      },
+      "w24": {
+        "swarm_hold": 0.0907,
+        "swarm_abort": 1.0
+      },
+      "w25": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0013
+      },
+      "w26": {
+        "swarm_hold": 0.0782,
+        "swarm_abort": 1.0
+      },
+      "w27": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.2449
+      },
+      "w28": {
+        "swarm_hold": 0.0005,
+        "swarm_abort": 1.0
+      },
+      "w29": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w30": {
+        "swarm_hold": 0.91,
+        "swarm_abort": 1.0
+      },
+      "w31": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.9947
+      },
+      "w32": {
+        "swarm_hold": 0.0003,
+        "swarm_abort": 1.0
+      },
+      "w33": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0969
+      },
+      "w34": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w35": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w36": {
+        "swarm_hold": 0.4054,
+        "swarm_abort": 1.0
+      },
+      "w37": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0345
+      },
+      "w38": {
+        "swarm_hold": 0.0001,
+        "swarm_abort": 1.0
+      },
+      "w39": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0002
+      },
+      "w40": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      }
+    },
+    "5 dB": {
+      "w01": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0001
+      },
+      "w02": {
+        "swarm_hold": 0.006,
+        "swarm_abort": 1.0
+      },
+      "w03": {
+        "swarm_hold": 0.9996,
+        "swarm_abort": 0.8625
+      },
+      "w04": {
+        "swarm_hold": 0.9223,
+        "swarm_abort": 0.9999
+      },
+      "w05": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0003
+      },
+      "w06": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w07": {
+        "swarm_hold": 0.9993,
+        "swarm_abort": 0.9032
+      },
+      "w08": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w09": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.2939
+      },
+      "w10": {
+        "swarm_hold": 0.001,
+        "swarm_abort": 1.0
+      },
+      "w11": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.003
+      },
+      "w12": {
+        "swarm_hold": 0.0,
+        "swarm_abort": 1.0
+      },
+      "w13": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0005
+      },
+      "w14": {
+        "swarm_hold": 0.0008,
+        "swarm_abort": 1.0
+      },
+      "w15": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0003
+      },
+      "w16": {
+        "swarm_hold": 0.14,
+        "swarm_abort": 1.0
+      },
+      "w17": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0005
+      },
+      "w18": {
+        "swarm_hold": 0.0963,
+        "swarm_abort": 1.0
+      },
+      "w19": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0098
+      },
+      "w20": {
+        "swarm_hold": 0.1391,
+        "swarm_abort": 1.0
+      },
+      "w21": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.1282
+      },
+      "w22": {
+        "swarm_hold": 0.0017,
+        "swarm_abort": 1.0
+      },
+      "w23": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.9753
+      },
+      "w24": {
+        "swarm_hold": 0.0409,
+        "swarm_abort": 1.0
+      },
+      "w25": {
+        "swarm_hold": 0.9993,
+        "swarm_abort": 0.0287
+      },
+      "w26": {
+        "swarm_hold": 0.1545,
+        "swarm_abort": 1.0
+      },
+      "w27": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.9724
+      },
+      "w28": {
+        "swarm_hold": 0.0066,
+        "swarm_abort": 1.0
+      },
+      "w29": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0001
+      },
+      "w30": {
+        "swarm_hold": 0.9814,
+        "swarm_abort": 1.0
+      },
+      "w31": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.9954
+      },
+      "w32": {
+        "swarm_hold": 0.0017,
+        "swarm_abort": 1.0
+      },
+      "w33": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0029
+      },
+      "w34": {
+        "swarm_hold": 0.0003,
+        "swarm_abort": 1.0
+      },
+      "w35": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0
+      },
+      "w36": {
+        "swarm_hold": 0.3654,
+        "swarm_abort": 1.0
+      },
+      "w37": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0033
+      },
+      "w38": {
+        "swarm_hold": 0.0003,
+        "swarm_abort": 1.0
+      },
+      "w39": {
+        "swarm_hold": 1.0,
+        "swarm_abort": 0.0003
+      },
+      "w40": {
+        "swarm_hold": 0.0005,
+        "swarm_abort": 1.0
+      }
+    }
+  }
+}
