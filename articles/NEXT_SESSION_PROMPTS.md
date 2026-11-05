@@ -10,9 +10,11 @@ missing.
 
 **Order and status.**
 - 1 (P4), 2 (Pi session, P12), 3 (P13), 4 (P11, commits `6d19b70` and `9ccee75`), 5 (P18
-  abstract, `6dc931b`) and 6 (P14 clamp-off ablation, `551435b` and `cac45c1`) are done and
-  committed. Their prompts are kept as a record.
-- 7 (P15 forced-alignment anchor) is next; it does not need the microphone and may need the Pi.
+  abstract, `6dc931b`), 6 (P14 clamp-off ablation, `551435b` and `cac45c1`) and 7 (P15
+  forced-alignment anchor, `7521563` and `e11ec9f`, plus the S9 noise delays re-anchored in a
+  follow-up) are done and committed. Their prompts are kept as a record.
+- P15 left the spotter itself unchanged: against the forced-aligned keyword end the reflex p95
+  is 515-518 ms, still over 150 ms. Shortening the spotter's delay is the optional retrain below.
 - P14 left one question open: whether the field alone avoids collisions on crossing paths or
   during a change of formation. The Exp-4 protocol never sends vehicles across each other's
   paths, so the clamp-off runs could not test it. The article states this as future work.

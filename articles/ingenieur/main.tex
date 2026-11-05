@@ -1001,8 +1001,8 @@ Clean & 1 & 0 & 0 & 0 \\
 and level had none, [0.000, 0.168]. No take fired the other class's head at any level. The hold
 missed in clean audio was detected at every noise level, and the abort missed at 10~dB was detected
 at the other levels; both peaked just under the threshold, at 0.9977 and 0.9952. Detection was not
-slower in noise: from the energy anchor, the p95 delay was 260--460~ms per class under noise against
-430--550~ms clean. Rotor noise alone, played at the level of each mixture, raised no trigger in
+slower in noise: from the \replaced[id=PR]{forced-aligned keyword end}{energy anchor}, the p95 delay was \replaced[id=PR]{150--450}{260--460}~ms per class under noise against
+\replaced[id=PR]{250--550}{430--550}~ms clean\added[id=PR]{ (260--460 and 430--550~ms from the energy bound)}\chcomment[id=PR]{P15}. Rotor noise alone, played at the level of each mixture, raised no trigger in
 13.5~s of the array's first channel or in 108~s across all eight channels (95\% upper bound 123 per
 hour), too short to bear on the false-accept criterion. As in clean audio, 20 takes per class cannot
 demonstrate the false-reject criterion, but misses and confusions did not rise down to
