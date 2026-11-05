@@ -6,16 +6,18 @@ The 40 recorded takes of `results/wake_real_voice.md` (one speaker, 20 per class
 
 ## False rejects and class confusions
 
-| condition | class | n | missed | FRR | 95% CI (exact) | fired own | fired other class | delay p50 | delay p95 |
-| :--- | :--- | ---: | ---: | ---: | :--- | ---: | ---: | ---: | ---: |
-| clean | `swarm_hold` | 20 | 1 | 0.050 | [0.001, 0.249] | 19 | 0 | 230 ms | 550 ms |
-| clean | `swarm_abort` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 160 ms | 430 ms |
-| 20 dB | `swarm_hold` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 140 ms | 260 ms |
-| 20 dB | `swarm_abort` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 150 ms | 350 ms |
-| 10 dB | `swarm_hold` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 60 ms | 310 ms |
-| 10 dB | `swarm_abort` | 20 | 1 | 0.050 | [0.001, 0.249] | 19 | 0 | 160 ms | 440 ms |
-| 5 dB | `swarm_hold` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 150 ms | 400 ms |
-| 5 dB | `swarm_abort` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 160 ms | 460 ms |
+Delay: first 80 ms frame at threshold, from the keyword's end; *energy* is the capture tool's bound (`wake_real.py`'s anchor), *MFA* the forced-aligned end of the word (P15).
+
+| condition | class | n | missed | FRR | 95% CI (exact) | fired own | fired other class | delay p50, energy | delay p95, energy | delay p50, MFA | delay p95, MFA |
+| :--- | :--- | ---: | ---: | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| clean | `swarm_hold` | 20 | 1 | 0.050 | [0.001, 0.249] | 19 | 0 | 230 ms | 550 ms | 260 ms | 550 ms |
+| clean | `swarm_abort` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 160 ms | 430 ms | -10 ms | 250 ms |
+| 20 dB | `swarm_hold` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 140 ms | 260 ms | 160 ms | 270 ms |
+| 20 dB | `swarm_abort` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 150 ms | 350 ms | -40 ms | 150 ms |
+| 10 dB | `swarm_hold` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 60 ms | 310 ms | 60 ms | 310 ms |
+| 10 dB | `swarm_abort` | 20 | 1 | 0.050 | [0.001, 0.249] | 19 | 0 | 160 ms | 440 ms | -40 ms | 250 ms |
+| 5 dB | `swarm_hold` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 150 ms | 400 ms | 180 ms | 450 ms |
+| 5 dB | `swarm_abort` | 20 | 0 | 0.000 | [0.000, 0.168] | 20 | 0 | 160 ms | 460 ms | -20 ms | 250 ms |
 
 ## False triggers on rotor noise alone (debounce 1.0 s)
 

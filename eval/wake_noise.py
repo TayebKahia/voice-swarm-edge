@@ -23,7 +23,9 @@ floor, so the SNR is still the take's.
 deployed threshold from `wake_heads.json`, 80 ms frames through `openwakeword.Model`, a
 take detected if its own head ever reaches the threshold, the 2x2 cross-trigger matrix,
 and delay from the capture tool's end-of-speech bound. A `clean` row runs the same code
-with no noise and must reproduce `results/wake_real_voice.md`.
+with no noise and must reproduce `results/wake_real_voice.md`. Delay is also given from the
+forced-aligned end of "hold"/"abort" (MFA, P15; `results/forced_align_anchors.json`, so run
+`eval/forced_align_anchors.py` first), the ingenieur article's anchor.
 
 **False triggers on noise alone** are counted on the same eval partition, played at the
 level the noise had in the mixes: for each SNR, noise RMS = (median active-speech RMS of
@@ -55,6 +57,7 @@ from eval.wake_real import META, TAKES, _check_heads, clopper_pearson, labels
 REPO = Path(__file__).resolve().parent.parent
 OUT_MD = REPO / "results" / "wake_noise.md"
 OUT_JSON = REPO / "results" / "wake_noise.json"
+ALIGNED = REPO / "results" / "forced_align_anchors.json"
 
 SNR_LEVELS = (20, 10, 5)
 SEED = 42                    # data/mix_noise.py's DEFAULT_SEED
@@ -103,6 +106,8 @@ def run() -> int:
         raise SystemExit(f"wake_heads.json threshold is {threshold}, not the deployed {DEPLOYED_THRESHOLD}")
 
     meta = json.loads(META.read_text())["takes"]
+    aligned = {t["take"]: t["mfa"]["kw_offset"]
+               for t in json.loads(ALIGNED.read_text())["per_take"] if t["mfa"]}
     classes = labels()
     bank = NoiseBank(sources=("dregon",), partition="eval")
     model = _model()
@@ -113,6 +118,7 @@ def run() -> int:
         audio = _load_int16(TAKES / f"{take}.wav")
         takes[take] = {"name": name, "padded": np.concatenate([pad, audio, pad]),
                        "kw_end_s": PAD_S + meta[take]["seconds"] - meta[take]["tail_seconds"],
+                       "mfa_end_s": PAD_S + aligned[take],
                        "active_rms": active_speech_rms(_to_float(audio), RATE)}
 
     conditions: dict[str, dict] = {}
@@ -132,6 +138,8 @@ def run() -> int:
                            "trace": stream_scores(model, signal)})
 
         scored = score_positives(traces, threshold)
+        scored_mfa = score_positives([dict(tr, kw_end_s=takes[tr["take"]]["mfa_end_s"])
+                                      for tr in traces], threshold)
         rows = []
         for name in CLASSES:
             mine = [tr for tr in traces if tr["label"] == CLASSES[name]]
@@ -140,6 +148,7 @@ def run() -> int:
             k, n = len(missed), len(mine)
             lo, hi = clopper_pearson(k, n)
             d = scored["delay_s"][name]
+            dm = scored_mfa["delay_s"][name]
             rows.append({"class": name, "n": n, "missed": k, "frr": k / n, "frr_ci95": [lo, hi],
                          "fired_own": scored["cross_trigger"][name][name],
                          "fired_other": scored["cross_trigger"][name][other],
@@ -147,6 +156,8 @@ def run() -> int:
                                                if (tr["trace"][other] >= threshold).any()],
                          "delay_p50_ms": _pct(d, 50) * 1000 if d else None,
                          "delay_p95_ms": _pct(d, 95) * 1000 if d else None,
+                         "delay_mfa_p50_ms": _pct(dm, 50) * 1000 if dm else None,
+                         "delay_mfa_p95_ms": _pct(dm, 95) * 1000 if dm else None,
                          "missed_takes": missed})
         conditions[cond] = {"rows": rows, "mix": mix_log}
         peaks[cond] = {tr["take"]: {n: round(float(tr["trace"][n].max()), 4) for n in CLASSES}
@@ -197,14 +208,19 @@ def run() -> int:
         "",
         "## False rejects and class confusions",
         "",
-        "| condition | class | n | missed | FRR | 95% CI (exact) | fired own | fired other class | delay p50 | delay p95 |",
-        "| :--- | :--- | ---: | ---: | ---: | :--- | ---: | ---: | ---: | ---: |",
+        "Delay: first 80 ms frame at threshold, from the keyword's end; *energy* is the capture tool's "
+        "bound (`wake_real.py`'s anchor), *MFA* the forced-aligned end of the word (P15).",
+        "",
+        "| condition | class | n | missed | FRR | 95% CI (exact) | fired own | fired other class "
+        "| delay p50, energy | delay p95, energy | delay p50, MFA | delay p95, MFA |",
+        "| :--- | :--- | ---: | ---: | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for cond, c in conditions.items():
         for r in c["rows"]:
             lines.append(f"| {cond} | `{r['class']}` | {r['n']} | {r['missed']} | {r['frr']:.3f} "
                          f"| [{r['frr_ci95'][0]:.3f}, {r['frr_ci95'][1]:.3f}] | {r['fired_own']} "
-                         f"| {r['fired_other']} | {ms(r['delay_p50_ms'])} | {ms(r['delay_p95_ms'])} |")
+                         f"| {r['fired_other']} | {ms(r['delay_p50_ms'])} | {ms(r['delay_p95_ms'])} "
+                         f"| {ms(r['delay_mfa_p50_ms'])} | {ms(r['delay_mfa_p95_ms'])} |")
     lines += [
         "",
         "## False triggers on rotor noise alone (debounce 1.0 s)",

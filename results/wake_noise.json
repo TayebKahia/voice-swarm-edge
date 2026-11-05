@@ -20,6 +20,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 229.99999999999997,
           "delay_p95_ms": 550.0,
+          "delay_mfa_p50_ms": 259.9999809265139,
+          "delay_mfa_p95_ms": 549.999976158142,
           "missed_takes": [
             "w03"
           ]
@@ -38,6 +40,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 160.00000000000014,
           "delay_p95_ms": 429.9999999999997,
+          "delay_mfa_p50_ms": -9.999990463256836,
+          "delay_mfa_p95_ms": 249.99997377395644,
           "missed_takes": []
         }
       ],
@@ -59,6 +63,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 140.00000000000057,
           "delay_p95_ms": 260.0000000000002,
+          "delay_mfa_p50_ms": 160.0000262260437,
+          "delay_mfa_p95_ms": 270.00001430511486,
           "missed_takes": []
         },
         {
@@ -75,6 +81,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 150.00000000000014,
           "delay_p95_ms": 349.99999999999966,
+          "delay_mfa_p50_ms": -39.999961853027344,
+          "delay_mfa_p95_ms": 149.99999999999991,
           "missed_takes": []
         }
       ],
@@ -257,6 +265,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 60.0000000000005,
           "delay_p95_ms": 310.0000000000003,
+          "delay_mfa_p50_ms": 60.000052452087616,
+          "delay_mfa_p95_ms": 309.9999761581422,
           "missed_takes": []
         },
         {
@@ -273,6 +283,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 160.00000000000014,
           "delay_p95_ms": 440.00000000000017,
+          "delay_mfa_p50_ms": -40.00000476837151,
+          "delay_mfa_p95_ms": 249.99997377395644,
           "missed_takes": [
             "w04"
           ]
@@ -457,6 +469,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 149.99999999999991,
           "delay_p95_ms": 399.9999999999999,
+          "delay_mfa_p50_ms": 179.9999809265138,
+          "delay_mfa_p95_ms": 449.99994277954113,
           "missed_takes": []
         },
         {
@@ -473,6 +487,8 @@
           "fired_other_takes": [],
           "delay_p50_ms": 160.00000000000014,
           "delay_p95_ms": 460.0000000000004,
+          "delay_mfa_p50_ms": -19.999980926513672,
+          "delay_mfa_p95_ms": 249.99997377395644,
           "missed_takes": []
         }
       ],
