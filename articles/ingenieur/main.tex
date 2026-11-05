@@ -71,33 +71,47 @@ Visualization, Writing -- original draft}
 \cortext[1]{Corresponding author.}
 
 \begin{abstract}
-A language-model voice interface is slow to stop a drone swarm: its parser cannot start before
-the operator finishes speaking. Our interface runs its speech and language stages on a Raspberry
-Pi~5 and splits commands between two paths. A parse path
-transcribes each utterance and parses it with a fine-tuned small language model under a grammar; a
-reflex path, a two-class keyword spotter, publishes a hold or an abort without transcription and
-cancels any parse in progress. A two-test rule admits to the reflex path only commands whose delay
-changes the outcome and whose false trigger can only make the swarm do less: two of ten.\added[id=PR]{ A hazard
-analysis tightens the rule into a checkable property: the hold satisfies it, and the abort stays on
-the reflex path as a stated exception, accepting that its false trigger lands the swarm.}\AuditID{P13} On recorded audio, each of 39 keyword takes that met a parse cancelled
-it, with no class confusion.\added[id=PR]{ Through the parse path alone, the same takes waited 612~ms at the
-median for the end of speech, and 3 of 40 stops became a formation command.}\AuditID{P12} Both paths miss their latency budgets: the reflex path takes 545--556~ms
-at the 95th percentile against 150~ms, almost all of it before the board's 5--18~ms, and the parse
-path 3,122~ms against 2,500~ms. Under rotor
-noise, command recognition falls from 0.690 to 0.590 at 10~dB, and almost no failure resolves to
-a hold. The rule
-and the budget carry over to other voice interfaces, and the misses locate what to change next:
-the spotter's decision delay, the recogniser and prompt caching. \replaced[id=PR]{Run whole, from a live microphone over Wi-Fi to
-simulated vehicles, a spoken stop was applied 0.9--1.1~s after its onset, with or without a network
-beyond the link, but the vehicles braked at about 1~m/s$^2$, and the spotter missed 11 of 45 live
-holds. No physical flight was performed.}{No physical flight or
-live-microphone run was performed.}\AuditID{rewritten: P18, P16; P11}
+\relax %% cas-common reads one token ahead and drops it; keep \replaced off this line
+\replaced[id=PR]{A language-model voice interface is slow to stop a drone swarm: its parser cannot start until the
+operator stops speaking. On a Raspberry Pi~5, we split commands between two paths. A parse path
+transcribes and parses each utterance with a fine-tuned small language model under a grammar; a
+reflex path, a two-class keyword spotter, publishes a hold or abort without transcription and
+cancels any running parse. A two-test rule admits to the reflex path only commands whose delay
+changes the outcome and whose false trigger can only make the swarm do less: two of ten. On recorded
+audio, each of 39 keyword takes that met a parse cancelled it; through the parse path alone, the same
+stops waited 612~ms at the median for the end of speech, and 3 of 40 became a formation command.
+Both paths miss their budgets at the 95th percentile: the reflex path takes 545--556~ms against
+150~ms, almost all before the board's 5--18~ms, and the parse path 3,122~ms against 2,500~ms. Under
+rotor noise, command recognition falls from 0.690 to 0.590 at 10~dB. From a live microphone over
+Wi-Fi to simulated vehicles, a stop was applied 0.9--1.1~s after onset, but the vehicles braked at
+about 1~m/s$^2$, and the spotter missed 11 of 45 live holds. The rule and budget transfer to other
+voice interfaces; the misses point to the spotter's decision delay, the recogniser, prompt caching
+and the controller's braking. No physical flight was performed.}{A language-model voice interface is
+slow to stop a drone swarm: its parser cannot start before the operator finishes speaking. Our
+interface runs its speech and language stages on a Raspberry Pi~5 and splits commands between two
+paths. A parse path transcribes each utterance and parses it with a fine-tuned small language model
+under a grammar; a reflex path, a two-class keyword spotter, publishes a hold or an abort without
+transcription and cancels any parse in progress. A two-test rule admits to the reflex path only
+commands whose delay changes the outcome and whose false trigger can only make the swarm do less:
+two of ten. A hazard analysis tightens the rule into a checkable property: the hold satisfies it,
+and the abort stays on the reflex path as a stated exception, accepting that its false trigger lands
+the swarm. On recorded audio, each of 39 keyword takes that met a parse cancelled it, with no class
+confusion. Through the parse path alone, the same takes waited 612~ms at the median for the end of
+speech, and 3 of 40 stops became a formation command. Both paths miss their latency budgets: the
+reflex path takes 545--556~ms at the 95th percentile against 150~ms, almost all of it before the
+board's 5--18~ms, and the parse path 3,122~ms against 2,500~ms. Under rotor noise, command
+recognition falls from 0.690 to 0.590 at 10~dB, and almost no failure resolves to a hold. The rule
+and the budget carry over to other voice interfaces, and the misses locate what to change next: the
+spotter's decision delay, the recogniser and prompt caching. Run whole, from a live microphone over
+Wi-Fi to simulated vehicles, a spoken stop was applied 0.9--1.1~s after its onset, with or without a
+network beyond the link, but the vehicles braked at about 1~m/s$^2$, and the spotter missed 11 of 45
+live holds. No physical flight was performed.}\AuditID{P18}
 \end{abstract}
 
 \begin{highlights}
 \item \replaced[id=PR]{Stop commands bypass the language model through a keyword-spotter reflex path}{A keyword-spotter reflex path preempts a small language model on a Raspberry Pi 5}\AuditID{P18}
 \item \replaced[id=PR]{A two-test rule admits only hold and abort to the reflex path}{A two-test membership rule admits only hold and abort to the reflex path}
-\item \replaced[id=PR]{Each of 39 keyword takes met during inference cancelled the decode}{All 78 reflex triggers during inference cancelled the decode in progress}\AuditID{P16}
+\item \replaced[id=PR]{Live, a spoken stop was applied in 0.9--1.1 s; the spotter missed 11 of 45 holds}{Each of 39 keyword takes met during inference cancelled the decode}\AuditID{P18}
 \item \replaced[id=PR]{Reflex p95 is 545 ms against 150 ms; post-detection board time is 5--18 ms}{Reflex latency misses its budget before the board; the board adds only 6--18 ms}
 \item Rotor noise lowers command recognition from 0.690 (clean) to 0.590 at 10 dB
 \end{highlights}
