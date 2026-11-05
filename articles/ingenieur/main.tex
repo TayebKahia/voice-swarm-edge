@@ -664,7 +664,11 @@ the threshold grid against three estimates of the keyword's end: the exact end s
 575 of the 600 synthetic test takes; and, on the 40 recorded takes, the capture tool's energy bound,
 which is the latency experiment's anchor, and the end of the last 32~ms window in which Silero's
 speech probability reaches 0.5. This curve was measured after the threshold had been fixed and was
-not used to choose it.}\chcomment[id=PR]{P15}
+not used to choose it.}\chcomment[id=PR]{P15}\added[id=PR]{ The 40 recorded takes were also mixed with rotor noise at 20,
+10 and 5~dB by the rule of the acoustic-robustness experiment below, from the part of the DREGON
+flight not used for training augmentation; noise also filled the 1~s of padding either side of each
+take, and the threshold was not retuned. False accepts on rotor noise alone were counted on the same
+part of the flight, played at the level the noise had in each mixture.}\chcomment[id=PR]{S9}
 
 \paragraph{Acoustic-robustness experiment.} The 200 golden recordings were passed through the parse
 path once clean and once at each of 20, 15, 10 and 5~dB signal-to-noise ratio, with rotor noise from
@@ -941,6 +945,41 @@ speech: the golden-set recordings produced none at 0.999, one at 0.998, four at 
 0.9. The false-reject rate on the recorded takes was 0.025 (1 of 40) from 0.998 upwards and zero
 below.}\chcomment[id=PR]{P15}
 
+\AuditAddedBlock{%
+\begin{table}
+\caption{Keyword-spotter misses and class confusions on the author's 40 recorded takes (20 per
+class) mixed with DREGON rotor noise from the evaluation part of the flight, at the operating
+threshold of 0.999. Missed: takes of 20 on which the class's own head never fired; 0 of 20 has a 95\%
+exact interval of [0.000, 0.168] and 1 of 20 of [0.001, 0.249]. Other class: takes on which the other
+class's head fired.\AuditID{S9}}
+\label{tab:kws-noise}
+\footnotesize
+\begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}lrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{Missed} & \multicolumn{2}{c}{Other class} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Condition & Hold & Abort & Hold & Abort \\
+\midrule
+Clean & 1 & 0 & 0 & 0 \\
+20 dB & 0 & 0 & 0 & 0 \\
+10 dB & 0 & 1 & 0 & 0 \\
+5 dB  & 0 & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular*}
+\end{table}}
+
+\added[id=PR]{Under rotor noise (Table~\ref{tab:kws-noise}) the spotter missed no hold and no abort at
+20 and 5~dB, and one abort at 10~dB, a false-reject rate of 0.050 [0.001, 0.249]; every other class
+and level had none, [0.000, 0.168]. No take fired the other class's head at any level. The hold
+missed in clean audio was detected at every noise level, and the abort missed at 10~dB was detected
+at the other levels; both peaked just under the threshold, at 0.9977 and 0.9952. Detection was not
+slower in noise: from the energy anchor, the p95 delay was 260--460~ms per class under noise against
+430--550~ms clean. Rotor noise alone, played at the level of each mixture, raised no trigger in
+13.5~s of the array's first channel or in 108~s across all eight channels (95\% upper bound 123 per
+hour), too short to bear on the false-accept criterion. As in clean audio, 20 takes per class cannot
+demonstrate the false-reject criterion, but misses and confusions did not rise down to
+5~dB.}\chcomment[id=PR]{S9}
+
 \subsection{Acoustic robustness}
 \label{sec:res-acoustic}
 
@@ -1129,7 +1168,7 @@ Abort, parse & online & 2 & 3.22 & 6.4 & 0.74 & 0.54 & 2.56 & 0.5 \\
 the companion paper and reported in Section~\mbox{\ref{sec:res-acoustic}}}, with its measured result.\added[id=PR]{ Engineering checks
 (simulation backends, state-machine legality, per-stage attribution) are reported in the text.} ``Not dem.'' (not demonstrated): the 95\%
 interval straddles the target.\deleted[id=PR]{ ``Not run'': requires an end-to-end run with networking disabled,
-which was not performed.}\added[id=PR]{ ``By constr.'': holds by construction, so the trial count is not evidence.}\AuditID{P14, P16}}
+which was not performed.}\added[id=PR]{ ``By constr.'': holds by construction, so the trial count is not evidence.}\AuditID{P14, P16, S9}}
 \label{tab:summary}
 \footnotesize\setlength{\tabcolsep}{2.5pt}
 \begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{3.1cm}l@{}}
@@ -1152,6 +1191,7 @@ CRR at 10~dB $\geq 0.65$ & 0.590 & missed \\
 Keyword false accepts $\leq 1$/h & 2.33 [0.06, 12.98] & not dem. \\
 Keyword false rejects $\leq 0.10$ & hold 0.050 [0.001, 0.249], abort 0.000 [0.000, 0.168] & not dem. \\
 \added[id=PR]{Keyword false rejects, live, $\leq 0.10$} & \added[id=PR]{hold 0.244 [0.129, 0.395], abort 0.093 [0.026, 0.221]} & \added[id=PR]{missed} \\
+\added[id=PR]{Keyword errors, rotor noise 20--5~dB} & \added[id=PR]{$\leq$1 of 20 missed per class (up to 0.050 [0.001, 0.249]); 0 confusions; 0 false accepts in 108~s} & \added[id=PR]{not dem.} \\
 Offline speech recognition & \replaced[id=PR]{on the board, networking disabled}{--} & \replaced[id=PR]{met}{not run} \\
 Offline operation & \replaced[id=PR]{40 stops, networking disabled}{--} & \replaced[id=PR]{met}{not run} \\
 Live demonstration & \replaced[id=PR]{80 stops, simulated vehicles}{--} & \replaced[id=PR]{met}{not performed} \\
@@ -1159,12 +1199,12 @@ Live demonstration & \replaced[id=PR]{80 stops, simulated vehicles}{--} & \repla
 \end{tabular*}
 \end{table}
 
-Table~\ref{tab:summary} collects the \replaced[id=PR]{sixteen requirements: six are met, one holds by construction, seven are
-missed, and two are not demonstrated. Three engineering checks also pass: both simulation backends run with the same gains,
+Table~\ref{tab:summary} collects the \replaced[id=PR]{seventeen requirements: six are met, one holds by construction, seven are
+missed, and three are not demonstrated. Three engineering checks also pass: both simulation backends run with the same gains,
 the flight state machine passes a test of every legality case, and every stage of both paths is
 attributed at p50 and p95.}{seventeen requirements: six are met, one holds by construction, five are missed, two
 are not demonstrated, two have not been run, and the live demonstration was not performed. The
-safe-failure target, defined in the companion paper, is also missed at every noise level.}\chcomment[id=PR]{P2, P18}
+safe-failure target, defined in the companion paper, is also missed at every noise level.}\chcomment[id=PR]{P2, P18, S9}
 
 % =============================================================================
 \section{Discussion}
@@ -1289,8 +1329,12 @@ formation changes, while the backends allow 3~m/s; vehicle speeds were not recor
 not reach utterances queued behind the one in progress, nor a trigger that arrives during
 transcription, and no reflex trial overlapped speech recognition.\replaced[id=PR]{ The voice-onset hold was timed with the board otherwise idle, and its false triggers were counted on clean speech only.}{ The single-path baseline's stages
 after endpointing were timed on a workstation, and the interaction between a reflex stop and the
-parse of the same phrase was inferred from two separate runs rather than measured.}\chcomment[id=PR]{P12} The state machine judges legality on a command's intent before the validator substitutes a hold, so an unvalidated command could dispatch a hold in a state where a hold is illegal; on the deployed route validation comes first, so the case does not arise there. Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
-to decide either keyword criterion.
+parse of the same phrase was inferred from two separate runs rather than measured.}\chcomment[id=PR]{P12} The state machine judges legality on a command's intent before the validator substitutes a hold, so an unvalidated command could dispatch a hold in a state where a hold is illegal; on the deployed route validation comes first, so the case does not arise there. \replaced[id=PR]{Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
+to decide either keyword criterion, in quiet or under rotor noise. The noise was mixed digitally from
+one 13.5~s segment of one hovering flight, so the takes share overlapping excerpts, the voice is
+that of a quiet room rather than one raised over rotors, and the false accepts on noise alone cover
+only 108~s.}{Finally, the 20 recorded takes per class and the 0.429~h ambient stream are too small
+to decide either keyword criterion.}\chcomment[id=PR]{S9}
 
 % =============================================================================
 \section{Conclusion}
