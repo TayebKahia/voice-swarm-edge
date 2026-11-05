@@ -48,11 +48,11 @@
 \def\floatpagepagefraction{1}
 \def\textpagefraction{.001}
 
-\shorttitle{A dual-path voice interface for drone-swarm control on a Raspberry Pi 5}
+\shorttitle{A dual-path voice interface for drone-swarm control on a CPU-only edge device}
 \shortauthors{T. Kahia and B. Khaldi}
 
-\title [mode = title]{A dual-path voice interface for drone-swarm formation control on a
-Raspberry Pi 5: reflex preemption of a small language model}
+\title [mode = title]{A dual-path voice interface for \replaced[id=PR]{a drone swarm on a CPU-only edge device}{drone-swarm formation control on a
+Raspberry Pi 5}: reflex preemption of a small language model\added[id=PR]{, from utterance to vehicle arrest}\AuditID{P11, P14}}
 
 \author[1]{Tayeb Kahia}
 \cormark[1]
@@ -87,8 +87,11 @@ path 3,122~ms against 2,500~ms. Under rotor
 noise, command recognition falls from 0.690 to 0.590 at 10~dB, and almost no failure resolves to
 a hold. The rule
 and the budget carry over to other voice interfaces, and the misses locate what to change next:
-the spotter's decision delay, the recogniser and prompt caching. No physical flight or
-live-microphone run was performed.\AuditID{rewritten: P18, P16}
+the spotter's decision delay, the recogniser and prompt caching. \replaced[id=PR]{Run whole, from a live microphone over Wi-Fi to
+simulated vehicles, a spoken stop was applied 0.9--1.1~s after its onset, with or without a network
+beyond the link, but the vehicles braked at about 1~m/s$^2$, and the spotter missed 11 of 45 live
+holds. No physical flight was performed.}{No physical flight or
+live-microphone run was performed.}\AuditID{rewritten: P18, P16; P11}
 \end{abstract}
 
 \begin{highlights}
@@ -256,8 +259,8 @@ under which the reflex path must hold.
   \draw[flow] (val.north) |- (bus.west);
   \draw[->, thick, dashed] (kws.south) -- ++(0,-0.95) -| node[pos=0.25, above] {cancel decode}
       (slm.north);
-  \draw[->, thick, dashed] (bus.south) -- node[right, align=left] {designed: Wi-Fi\\as run: loopback} (fsm.north);
-  \draw[->, thick, dotted] (fsm) -- node[above] {not built} (ctl);
+  \draw[->, thick, dashed] (bus.south) -- node[right, align=left] {Wi-Fi (closed loop)\\loopback (other runs)} (fsm.north);
+  \draw[flow] (fsm) -- node[above] {link} (ctl);
   \draw[flow] (ctl) -- (sim);
   \node[tag, anchor=south west] (ta) at (kws.north west) {Reflex path};
   \node[tag, anchor=north west] (tb) at (vad.south west) {Parse path};
@@ -267,15 +270,20 @@ under which the reflex path must hold.
           label={[font=\footnotesize\itshape, anchor=north west]north west:Raspberry Pi 5, no cloud service}] {};
     \node[draw, fill=gray!8, rounded corners=4pt, inner sep=9pt,
           fit=(sim) (fsm),
-          label={[font=\footnotesize\itshape, anchor=north west]north west:Workstation (as designed)}] {};
+          label={[font=\footnotesize\itshape, anchor=north west]north west:Workstation}] {};
   \end{scope}
 \end{tikzpicture}}
 \caption{Dual-path runtime. Both paths read one audio stream and publish to one command bus; the
-reflex path publishes a fixed command and cancels any decode in progress. As designed, the bus
+reflex path publishes a fixed command and cancels any decode in progress. \replaced[id=PR]{The bus
+carries commands over Wi-Fi to a workstation that runs the state machine, a link to the swarm
+controller, and the simulation; the closed-loop run used this route
+(Section~\ref{sec:res-closed}). In the other experiments the bus ran over the board's loopback
+interface, with the consumer and the state machine on the board, and formations were commanded to
+the controller directly (Section~\ref{sec:setup}).}{As designed, the bus
 carries commands over Wi-Fi to a workstation that runs the state machine, the swarm controller and
 the simulation. In the experiments the bus ran over the board's loopback interface, with the consumer
 and the state machine on the board, and the link from the state machine to the controller is not
-built: formations were commanded to the controller directly (Section~\ref{sec:setup}).}
+built: formations were commanded to the controller directly (Section~\ref{sec:setup}).}\AuditID{P11}}
 \label{fig:architecture}
 \end{figure*}
 
@@ -359,9 +367,11 @@ nothing from the fast path but enlarge its false-accept surface.
 
 Exactly two intents pass. \emph{Swarm hold} publishes \texttt{hover}: lateral motion stops and the
 mission can be resumed. \emph{Swarm abort} publishes \texttt{abort}, a descent in place with the
-motors stopped on ground contact. These are the effects on the designed route; the link that would
+motors stopped on ground contact. \replaced[id=PR]{A link on the workstation applies both to the controller:
+a hold sets every vehicle's target to its position when the hold arrives, and an abort sets it to the
+ground below; both were measured on the simulated vehicles (Section~\ref{sec:res-closed}).}{These are the effects on the designed route; the link that would
 apply them to the controller is not built (Section~\ref{sec:setup}), so neither was executed on
-the simulated vehicles. A \emph{resume} phrase is excluded deliberately: a false trigger
+the simulated vehicles.}\chcomment[id=PR]{P11} A \emph{resume} phrase is excluded deliberately: a false trigger
 would restart motion the operator chose to freeze. \replaced[id=PR]{Confusion between the two admitted classes is
 benign in one direction only: an abort heard as a hold stops the swarm, but a hold heard as an abort
 lands it (Section~\ref{sec:hazard}).}{Confusion between the two admitted classes is
@@ -420,8 +430,9 @@ state no spoken command can change.}\chcomment[id=PR]{P13}
   severe of the five outcomes and the only one the interface cannot undo.
 \item \emph{Late stop} (too late; H1). Quantified below.
 \item \emph{The stop phrase's own parse} (wrong order; H1). With its number reserved at acceptance,
-  the parse of a hold was applied after the hold, and on one of the 39 detected takes it replaced the
-  hold with a formation change (Section~\ref{sec:res-single}). Reserving the number at the onset of
+  the parse of a hold was applied after the hold, and on one of the 39 detected takes \replaced[id=PR]{the state machine
+  accepted a formation command in place of the hold}{it replaced the
+  hold with a formation change} (Section~\ref{sec:res-single}). Reserving the number at the onset of
   speech closed this: none of the 39 parses was applied after the stop. The cost is an availability
   one: a false hold during a spoken command now loses that command as well.\AuditID{P13}
 \end{itemize}}
@@ -446,7 +457,13 @@ the validator admits, though only narrowly at that floor, where $\Delta d = 0.40
 4$~m/s$^2$, the reflex path's share of Eq.~\eqref{eq:stopping}, $v\,t_s + v^2/2a$ at p95, is 1.6~m
 at 2.0~m/s and 2.8~m at 3~m/s, against 5.6~m and 8.7~m through the parse path. The reflex
 budget can be read the same way: 150~ms is 0.30--0.45~m of travel at 2--3~m/s, about the
-collision distance, although it was not set that way.}\chcomment[id=PR]{P13}
+collision distance, although it was not set that way.}\chcomment[id=PR]{P13}\added[id=PR]{ Measured in closed loop
+(Section~\ref{sec:res-closed}), the assumed $a$ is four times too high for the deployed controller: from
+1.3--1.5~m/s, the vehicles travelled 0.92~m after a hold was applied and 1.09~m after an abort, an
+effective $v^2/2d$ of 1.0~m/s$^2$ at the median for both, so on this controller the braking term of
+Eq.~\eqref{eq:stopping} is about four times larger than above. The latency term was measured too: a hold the reflex
+path missed and the parse path delivered was applied 3.1~s after the onset of speech, against 1.1~s
+through the reflex path.}\chcomment[id=PR]{P11}
 
 \begin{table}
 \AuditAddedBlock{%
@@ -578,7 +595,26 @@ Section~\ref{sec:budget}. During the latency experiment the processor, sampled a
 and the throttle flag was clear on all 360 trials. Audio was replayed from recordings, not captured
 from a microphone: in real time through the frame loop in the latency experiment, and faster than
 real time in the acoustic-robustness experiment. The bus ran over the loopback interface
-with the consumer and state machine on the board.
+with the consumer and state machine on the board\added[id=PR]{, except in the closed-loop run}.\chcomment[id=PR]{P11}
+
+\paragraph{\added[id=PR]{Closed-loop run.}} \added[id=PR]{The whole chain of Fig.~\ref{fig:architecture} was run with the first author
+speaking into the board's USB microphone, at about 15~cm, in the room of the recordings. The board
+ran both paths and published over Wi-Fi, through a domestic router, to a workstation that ran the
+consumer, the ordering rule, the state machine, the link and the rigid-body backend, stepped against
+the wall clock at its 24~Hz. The demonstration-only gate that suppresses a parse during which the
+reflex path fired was off, so the ordering rule was the only protection. Each take was a spoken
+formation change between a line of 3~m spacing and a circle of 4~m radius; once the fastest vehicle
+passed 1~m/s the workstation cued the operator, who said the stop phrase. There were 20 holds and 20
+aborts in each of two conditions: \emph{online}, and \emph{offline}, with a packet filter on the
+board dropping all traffic except to the workstation, so that DNS and the internet were unreachable.
+Utterance onset was found in the audio the frame loop consumed, by an energy rule (10~ms levels,
+12~dB above the floor of the preceding 6~s, gaps under 0.4~s bridged); the board's and the
+workstation's clocks were related by a probe a second over the same link, within 6.5~ms for every
+stop. A take counts if the stop arrived while the fastest vehicle moved at 0.5~m/s or more; rest is
+every vehicle below 0.1~m/s for 0.5~s for a hold, and motors off on ground contact for an abort. The
+processor stayed at or below 68.6~$^\circ$C with the throttle flag clear. A loose microphone jack
+ended one online session early; its remaining aborts were run in a second session, and the
+offline holds and aborts were run in two sessions either side of a break.}\chcomment[id=PR]{P11}
 
 \paragraph{Latency experiment.} The parse path was timed on the 200 utterances of the golden test
 set, recorded by the first author and described in the companion paper~\citep{companion}; the endpointer split them into 226 segments, and each segment is one latency sample. The reflex path was timed on
@@ -752,7 +788,10 @@ an estimate of 2.1~s, not a measurement, for a stop routed through the parse pat
 cover (Table~\ref{tab:ordering}). On all 39 takes the reflex path detected, its message was published
 before the endpointer closed the utterance, so a parse-path number reserved at acceptance was newer
 than the stop. All 19 parses of a detected hold were therefore applied after it: 18 repeated the hold,
-and on one take, heard as ``swarm, walled'', a formation change replaced it. The state machine refused
+and on one take, heard as ``swarm, walled'', \replaced[id=PR]{the state machine accepted a formation command (a flock) in
+its place. This was measured at the state machine; the controller has no slots for a flock, and the
+link executes it as a hold, so on this route the vehicles would not have moved, but a formation the
+controller can fly would have moved them, and an earlier live rehearsal heard ``swarm hold'' as a wedge twice}{a formation change replaced it}. The state machine refused
 the 20 parses of a detected abort. With the number reserved at the endpointer's onset event, which
 preceded the stop on all 39 takes, the ordering rule discarded all 39 parses, and none was applied after
 the stop (95\% upper bound 0.090). The reflex path's p95 stayed at 545~ms, and the parse path still
@@ -976,6 +1015,53 @@ The other 9 occurred in flight, all in one circle trial. The closest approach of
 spawn held no close pair, the vehicles stayed 0.82--0.89~m apart without the clamp acting.}{The closest approach was 0.800~m, the clamp distance, in each
 of those 144 trials, and 0.82--0.89~m in the other six.}\chcomment[id=PR]{P14}
 
+\subsection{\added[id=PR]{Closed loop}}
+\label{sec:res-closed}
+
+\added[id=PR]{Spoken live and carried over Wi-Fi, every stop the reflex path detected reached the vehicles
+(Table~\ref{tab:closed}). From the onset of speech, a hold was applied after 1.1~s at the median and
+an abort after 0.9~s, almost all of it on the board: from publication to the consumer applying the
+command took 8--54~ms at the median (at most 203~ms). With the board cut off from every network but
+the link, the medians did not move beyond their intervals. The stop did not end the motion quickly:
+a hold, which sends each vehicle back to where it was when the hold arrived, overshot that point by
+0.92~m at the median and settled after 8.8~s, and an abort, a descent in place, reached the ground
+3.3--3.5~s after it was applied. One hold, applied at 2.31~m/s, kept the five vehicles oscillating
+and never came to rest; it is excluded from Table~\ref{tab:closed}, as are 11 takes whose stop
+arrived after the fastest vehicle had slowed below 0.5~m/s and one whose onset merged with earlier
+speech. The controller's gains were tuned on the kinematic
+backend, and this is the first run of either stop on the rigid-body one.}\chcomment[id=PR]{P11}
+
+\added[id=PR]{The keyword spotter missed live stop phrases far more often than recorded ones. Of 45 spoken holds
+that the parse path transcribed with the word ``hold'', the reflex path missed 11 (0.244 [0.129,
+0.395]); of 43 aborts, 4 (0.093 [0.026, 0.221]). Online and offline gave 6 of 23 and 5 of 22 for the
+hold. Of 81 cued formation changes, 76 were stopped by the reflex path before the next command. When the
+reflex path missed, the parse path delivered the stop, about 2~s later. The ordering rule discarded
+all 76 parse-path copies of a phrase the reflex path had already acted on, and no stop was replaced
+by another command before the vehicles came to rest (0 of 90 stops; 95\% upper bound 0.040).}\chcomment[id=PR]{P11}
+
+\AuditAddedBlock{%
+\begin{table*}
+\caption{Closed loop: a spoken stop during a formation change, live microphone, Wi-Fi to the
+rigid-body backend. Medians, with the 95\% order-statistic interval where $n \geq 9$; times from the
+onset of speech, in seconds; distances horizontal, the largest over the five vehicles; $a_\mathrm{eff}
+= v_0^2/2d$ from the speed $v_0$ when the stop was applied and the distance $d$ after it. Parse: a stop
+the reflex path missed and the parse path delivered, both conditions pooled.\AuditID{P11}}
+\label{tab:closed}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llrllrrrr@{}}
+\toprule
+Stop & Condition & $n$ & Onset to applied & Onset to rest & $v_0$ (m/s) & $d$ after applied (m) & $d$ from onset (m) & $a_\mathrm{eff}$ (m/s$^2$) \\
+\midrule
+Hold, reflex & online & 15 & 1.12 [1.02, 1.34] & 10.0 [9.6, 10.5] & 1.26 & 0.92 & 2.75 & 0.8 \\
+Hold, reflex & offline & 15 & 1.14 [1.02, 1.32] & 10.0 [9.6, 10.2] & 1.31 & 0.91 & 2.93 & 1.0 \\
+Hold, parse & both & 9 & 3.11 [3.07, 3.23] & 10.7 [10.0, 14.8] & 1.11 & 0.99 & 3.62 & 0.5 \\
+Abort, reflex & online & 17 & 0.98 [0.86, 1.00] & 4.3 [4.1, 4.7] & 1.21 & 1.05 & 2.23 & 0.7 \\
+Abort, reflex & offline & 19 & 0.88 [0.83, 0.91] & 4.4 [4.1, 4.6] & 1.63 & 1.11 & 2.71 & 1.2 \\
+Abort, parse & online & 2 & 3.22 & 6.4 & 0.74 & 0.54 & 2.56 & 0.5 \\
+\bottomrule
+\end{tabular*}
+\end{table*}}
+
 \subsection{Summary against the requirements}
 \label{sec:res-summary}
 
@@ -983,8 +1069,8 @@ of those 144 trials, and 0.82--0.89~m in the other six.}\chcomment[id=PR]{P14}
 \caption{Every requirement of the system\deleted[id=PR]{ other than the safe-failure target, which is defined in
 the companion paper and reported in Section~\mbox{\ref{sec:res-acoustic}}}, with its measured result.\added[id=PR]{ Engineering checks
 (simulation backends, state-machine legality, per-stage attribution) are reported in the text.} ``Not dem.'' (not demonstrated): the 95\%
-interval straddles the target. ``Not run'': requires an end-to-end run with networking disabled,
-which was not performed.\added[id=PR]{ ``By constr.'': holds by construction, so the trial count is not evidence.}\AuditID{P14, P16}}
+interval straddles the target.\deleted[id=PR]{ ``Not run'': requires an end-to-end run with networking disabled,
+which was not performed.}\added[id=PR]{ ``By constr.'': holds by construction, so the trial count is not evidence.}\AuditID{P14, P16}}
 \label{tab:summary}
 \footnotesize\setlength{\tabcolsep}{2.5pt}
 \begin{tabular*}{\tblwidth}{@{\extracolsep{\fill}}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{3.1cm}l@{}}
@@ -1006,16 +1092,16 @@ CRR at 10~dB $\geq 0.65$ & 0.590 & missed \\
 \added[id=PR]{Safe-failure rate $\geq 0.70$} & \added[id=PR]{0.014--0.039} & \added[id=PR]{missed} \\
 Keyword false accepts $\leq 1$/h & 2.33 [0.06, 12.98] & not dem. \\
 Keyword false rejects $\leq 0.10$ & hold 0.050 [0.001, 0.249], abort 0.000 [0.000, 0.168] & not dem. \\
-Offline speech recognition & -- & not run \\
-Offline operation & -- & not run \\
-Live demonstration & -- & not performed \\
+\added[id=PR]{Keyword false rejects, live, $\leq 0.10$} & \added[id=PR]{hold 0.244 [0.129, 0.395], abort 0.093 [0.026, 0.221]} & \added[id=PR]{missed} \\
+Offline speech recognition & \replaced[id=PR]{on the board, networking disabled}{--} & \replaced[id=PR]{met}{not run} \\
+Offline operation & \replaced[id=PR]{40 stops, networking disabled}{--} & \replaced[id=PR]{met}{not run} \\
+Live demonstration & \replaced[id=PR]{80 stops, simulated vehicles}{--} & \replaced[id=PR]{met}{not performed} \\
 \bottomrule
 \end{tabular*}
 \end{table}
 
-Table~\ref{tab:summary} collects the \replaced[id=PR]{fifteen requirements: three are met, one holds by construction, six are
-missed, two are not demonstrated, two have not been run, and the live demonstration was not
-performed. Three engineering checks also pass: both simulation backends run with the same gains,
+Table~\ref{tab:summary} collects the \replaced[id=PR]{sixteen requirements: six are met, one holds by construction, seven are
+missed, and two are not demonstrated. Three engineering checks also pass: both simulation backends run with the same gains,
 the flight state machine passes a test of every legality case, and every stage of both paths is
 attributed at p50 and p95.}{seventeen requirements: six are met, one holds by construction, five are missed, two
 are not demonstrated, two have not been run, and the live demonstration was not performed. The
@@ -1124,13 +1210,19 @@ and neither separates its stop from the interpreting path. MIRA's gate aborts at
 
 \paragraph{Limitations.} The formation results come from a kinematic simulator without rotor
 dynamics, wind or downwash; the rigid-body backend was exercised by smoke tests only, at an effective
-control rate of 24~Hz, and no physical flight was performed. The audio was replayed recordings of one
+control rate of 24~Hz, and no physical flight was performed. \replaced[id=PR]{Apart from the closed-loop run, the audio
+was replayed recordings of one speaker in one session. The closed-loop run is one speaker, one room,
+no rotor noise and one Wi-Fi network without induced loss, so the loss of the bus's unacknowledged UDP
+datagrams was not measured, and its stops ran on the rigid-body backend with gains tuned on the
+kinematic one; its onsets come from an energy rule, not a forced alignment, and its operator was cued
+by the workstation, so it does not measure a human's reaction time. The formation trials were
+commanded to the controller directly.}{The audio was replayed recordings of one
 speaker in one session, not live capture. The bus ran over loopback, so no wireless hop and no loss
 of its unacknowledged UDP datagrams was measured. The link from the state machine to the controller is
 not built, and formations were commanded directly; no run joined speech to formation, and the
 effects of a hold or an abort on the vehicles, including the time to rest, were not measured. Offline
 operation was not verified by a run with networking disabled, and the live demonstration was not
-performed. Formation commands carry no speed, so the validator's 2.0~m/s ceiling does not apply to
+performed.}\chcomment[id=PR]{P11} Formation commands carry no speed, so the validator's 2.0~m/s ceiling does not apply to
 formation changes, while the backends allow 3~m/s; vehicle speeds were not recorded. Preemption does
 not reach utterances queued behind the one in progress, nor a trigger that arrives during
 transcription, and no reflex trial overlapped speech recognition.\replaced[id=PR]{ The voice-onset hold was timed with the board otherwise idle, and its false triggers were counted on clean speech only.}{ The single-path baseline's stages
@@ -1154,14 +1246,20 @@ accepts that a false abort lands the swarm and removes voice control until a man
 stop supplements, and does not replace, a hardware emergency stop.}\chcomment[id=PR]{P13} The system misses its latency budgets on both paths, before the board's share on the reflex path
 and in speech recognition and uncached prefill on the parse path, and misses its recognition targets under
 rotor noise, with errors that do not become safer as noise rises.\added[id=PR]{ Routed through the parse path
-alone, a stop waited 612~ms at the median for the endpointer and was misrecognised in 3 of 40 takes.}\chcomment[id=PR]{P12}\added[id=PR]{ Reserving the parse-path number at the onset of speech stopped the parse of a stop phrase being applied after the stop, on 19 of 39 takes before and none after. A hold at voice onset was about 900~ms faster than the keyword but fired on every ordinary command.}\chcomment[id=PR]{P12}
+alone, a stop waited 612~ms at the median for the endpointer and was misrecognised in 3 of 40 takes.}\chcomment[id=PR]{P12}\added[id=PR]{ Reserving the parse-path number at the onset of speech stopped the parse of a stop phrase being applied after the stop, on 19 of 39 takes before and none after. A hold at voice onset was about 900~ms faster than the keyword but fired on every ordinary command.}\chcomment[id=PR]{P12}\added[id=PR]{
+Run whole, from a live microphone over Wi-Fi to simulated vehicles, with or without a network beyond
+the link, a spoken stop was applied about 1~s after its onset and was never overridden, but the
+vehicles braked at about 1~m/s$^2$, a hold took 8.8~s to settle, and the spotter missed a quarter of
+live holds.}\chcomment[id=PR]{P11}
 Future work will reduce the spotter's
 decision delay\added[id=PR]{ and re-measure it against a forced alignment}\deleted[id=PR]{, reserve the parse-path sequence
 number at the onset of speech}\chcomment[id=PR]{P12}\added[id=PR]{, set a budget for false aborts and measure a hold
 with the abort on a second detection against it}\chcomment[id=PR]{P13}, cache the prompt prefix after a parity check, replace the server's polling with an
-explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate, build the
-link from the state machine to the controller, replace the integrator clamp with a force-level
-mechanism, and run the complete chain live, with networking disabled and on physical vehicles.
+explicit slot cancellation, flush queued utterances on a trigger, add a confidence gate,\deleted[id=PR]{ build the
+link from the state machine to the controller,} replace the integrator clamp with a force-level
+mechanism, \added[id=PR]{give the hold a braking target and retune the gains on the rigid-body backend,
+measure the spotter on live speech from several speakers, acknowledge or repeat stop messages over a
+lossy link, }and run the complete chain\deleted[id=PR]{ live, with networking disabled and} on physical vehicles.\chcomment[id=PR]{P11}
 
 % =============================================================================
 \printcredits
