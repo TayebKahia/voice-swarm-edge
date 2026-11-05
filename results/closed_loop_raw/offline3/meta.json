@@ -1,0 +1,3 @@
+{"condition": "offline", "part": 2, "backend": "pyflyt", "reflex_gate": "off", "governor": "performance",
+ "network": "Pi: nft table inet p11 drops every packet except loopback and the workstation (10.92.235.124); DNS fails, internet unreachable (offline_check.json). Workstation online.",
+ "notes": "The 20 abort takes, after a break; a fresh runtime and consumer."}

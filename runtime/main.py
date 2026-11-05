@@ -16,11 +16,21 @@ a misheard copy overrode the hold. The first live run measured that: 10 spoken "
 reflex triggers, and parse-path copies of hover x6, unknown x1, abort x1 ("swarm, halt.") and a
 wedge formation x2 ("swarm, horned."). `runtime/stream.py` now reserves the number at speech onset,
 so the rule discards those copies by itself; what the gate still adds is that a suppressed utterance
-is never transcribed. No measured result was produced through this module, so none changes.
+is never transcribed. The gate is on by default, for the demonstration; `--reflex-gate off` leaves
+the ordering rule as the only protection, which is what the article describes, and is how the
+closed-loop runs of `eval/closed_loop.py` (peer-review item P11) were made. Those runs are the
+measured results produced through this module: latency from utterance onset to the vehicles'
+arrest, stopping distance and time to rest, with the live microphone over Wi-Fi.
+
+`--capture PREFIX` writes what the frame loop consumed, so utterance onsets can be found after the
+run: `PREFIX.pcm` (16 kHz int16, the frames in order) and `PREFIX.tdue` (one little-endian float64
+per frame, the `time.monotonic()` stamp the source gave it). Both are flushed about once a second,
+so a run cut short keeps what it captured.
 
     python runtime/main.py --bus-host 10.42.0.1                 # the demonstration
     python runtime/main.py --level-check                        # microphone level, no pipeline
     python runtime/main.py --bus-host 127.0.0.1 --source take.wav   # rehearsal from a recording
+    python runtime/main.py --bus-host HOST --reflex-gate off --capture demo_runs/cap  # P11 runs
 
 `run_pipeline.sh` starts this file with `--model` and `--state`; `--state` is accepted and unused,
 because the flight state lives on the workstation, and the bus host is read from `PFE_BUS_HOST`
@@ -34,6 +44,7 @@ import argparse
 import datetime as _dt
 import logging
 import os
+import struct
 import sys
 import threading
 import time
@@ -71,12 +82,17 @@ class Narrator:
 
     def __init__(self, runtime) -> None:
         self._runtime = runtime
+        self._frames = 0
 
     def on_wake_frame(self, frame):
+        self._frames += 1
         message = self._runtime.on_wake_frame(frame)
         if message is not None:
             intent = message.command.get("intent")
             say(f"REFLEX  '{_KEYWORD.get(intent, intent)}' -> {message.command}  seq={message.seq}")
+            logger.info("reflex published", extra={
+                "event": "reflex_published", "seq": message.seq, "intent": intent,
+                "t_publish": message.t_publish, "frame": self._frames - 1})
         return message
 
     def reserve_seq(self) -> int:
@@ -93,7 +109,10 @@ class Narrator:
         logger.info("parse path heard %r", trace.transcript, extra={
             "event": "parse_heard", "seq": trace.seq, "transcript": trace.transcript, "raw": trace.raw,
             "aborted": trace.aborted, "stt_ms": round(trace.stt_ms, 1),
-            "parse_wall_ms": round(trace.parse_wall_ms, 1)})
+            "parse_wall_ms": round(trace.parse_wall_ms, 1),
+            "command": None if trace.message is None else trace.message.command,
+            "t_publish": None if trace.message is None else trace.message.t_publish,
+            "t_start": trace.t_start})
         return trace
 
 
@@ -176,6 +195,35 @@ class ReflexGate:
                             t_start=now, t_transcribed=now, t_parsed=now, t_published=None)
 
 
+class CaptureTee:
+    """Passes a frame source through unchanged, writing each frame and its stamp to disk."""
+
+    FLUSH_EVERY = 12                                       # frames: about one second
+
+    def __init__(self, source, prefix: Path) -> None:
+        self._source = source
+        self.prefix = prefix
+
+    def __iter__(self):
+        self.prefix.parent.mkdir(parents=True, exist_ok=True)
+        with open(f"{self.prefix}.pcm", "wb") as pcm, open(f"{self.prefix}.tdue", "wb") as stamps:
+            for n, (frame, t_due) in enumerate(self._source, start=1):
+                pcm.write(np.asarray(frame, dtype="<i2").tobytes())
+                stamps.write(struct.pack("<d", float(t_due)))
+                if n % self.FLUSH_EVERY == 0:
+                    pcm.flush()
+                    stamps.flush()
+                yield frame, t_due
+
+    def close(self) -> None:
+        if hasattr(self._source, "close"):
+            self._source.close()
+
+    @property
+    def overflows(self) -> int:
+        return getattr(self._source, "overflows", 0)
+
+
 def _route_logs(path: Path) -> None:
     """Structured JSON to `path`; the terminal keeps only errors, so the camera sees `say()`."""
     from schema.logger import StructuredJsonFormatter
@@ -236,11 +284,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--level-check", action="store_true", help="print the microphone level and exit")
     ap.add_argument("--seconds", type=float, default=60.0, help="--level-check duration")
     ap.add_argument("--log", type=Path, default=None, help="structured JSON log (default demo_runs/pi-<time>.jsonl)")
+    ap.add_argument("--reflex-gate", choices=("on", "off"), default="on",
+                    help="demonstration-only ReflexGate (default on); off leaves the ordering rule alone")
+    ap.add_argument("--capture", type=Path, default=None,
+                    help="write the consumed frames to PREFIX.pcm and their stamps to PREFIX.tdue")
     ap.add_argument("--state", default=None, help=argparse.SUPPRESS)  # run_pipeline.sh passes it; unused
     args = ap.parse_args(argv)
 
     if args.level_check:
         return level_check(args.device, args.gain_db, args.seconds)
+    # A shell starts a background job with SIGINT ignored, and Python then keeps it ignored; restore
+    # Ctrl-C's KeyboardInterrupt so a detached run still stops cleanly and logs `run_end`.
+    import signal
+
+    signal.signal(signal.SIGINT, signal.default_int_handler)
     if not args.bus_host:
         ap.error("--bus-host (or PFE_BUS_HOST) is required: the workstation's address on the link")
 
@@ -265,8 +322,11 @@ def main(argv: list[str] | None = None) -> int:
     source = None
     try:
         runtime = PipelineRuntime(bus=bus, branch_a=load_trained(), parser=parser)
-        gate = ReflexGate(Narrator(runtime), Endpointer())
-        loop = StreamLoop(gate, gate, front_cores=FRONT, back_cores=BACK)
+        if args.reflex_gate == "on":
+            gate = ReflexGate(Narrator(runtime), Endpointer())
+            loop = StreamLoop(gate, gate, front_cores=FRONT, back_cores=BACK)
+        else:
+            loop = StreamLoop(Narrator(runtime), Endpointer(), front_cores=FRONT, back_cores=BACK)
         if args.source is not None:
             import soundfile as sf
 
@@ -281,12 +341,23 @@ def main(argv: list[str] | None = None) -> int:
 
             source = MicSource(args.device, gain_db=args.gain_db)
             what = f"live microphone, gain {source.gain_db:+.2f} dB"
+        if args.capture is not None:
+            source = CaptureTee(source, args.capture)
+            what += f"; capture {args.capture}.pcm"
+        logger.info("run start", extra={
+            "event": "run_start", "reflex_gate": args.reflex_gate, "mono": time.monotonic(),
+            "wall": time.time(), "bus_host": args.bus_host, "source": str(args.source or "microphone"),
+            "capture": None if args.capture is None else str(args.capture)})
+        what += f"; ReflexGate {args.reflex_gate}"
         say(f"READY   {what}; publishing to {args.bus_host}:{args.bus_port}; log {log}")
         result = loop.run(source)
         say(f"source ended: {len(result.branch_a)} reflex, {len(result.branch_b)} parse-path utterances")
     except KeyboardInterrupt:
         say("stopped")
     finally:
+        if source is not None:
+            logger.info("run end", extra={"event": "run_end", "mono": time.monotonic(), "wall": time.time(),
+                                          "overflows": getattr(source, "overflows", 0)})
         if hasattr(source, "close"):
             source.close()
         server.stop()

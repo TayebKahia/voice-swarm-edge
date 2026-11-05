@@ -158,3 +158,19 @@ def test_the_gate_passes_the_onset_number_through():
     result = StreamLoop(gate, gate).run(WavSource(np.zeros(FRAME * 30, dtype=np.int16), realtime=False))
     record, = result.branch_b
     assert record.trace.seq == 500
+
+
+def test_capture_tee_writes_frames_and_stamps(tmp_path):
+    """`--capture`: every frame passes through unchanged and lands on disk with its stamp."""
+    import struct
+
+    from runtime.main import CaptureTee
+
+    frames = [(np.full(1280, i, dtype=np.int16), 10.0 + 0.08 * i) for i in range(30)]
+    tee = CaptureTee(frames, tmp_path / "cap")
+    out = list(tee)
+    assert [t for _, t in out] == [t for _, t in frames]
+    pcm = np.fromfile(tmp_path / "cap.pcm", dtype="<i2").reshape(-1, 1280)
+    assert pcm.shape == (30, 1280) and (pcm[:, 0] == np.arange(30)).all()
+    raw = (tmp_path / "cap.tdue").read_bytes()
+    assert list(struct.unpack(f"<{len(raw) // 8}d", raw)) == [t for _, t in frames]

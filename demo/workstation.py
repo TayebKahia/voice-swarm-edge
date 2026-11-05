@@ -21,6 +21,16 @@ the trajectory goes to `<out>/trajectory.npz`; `<out>` is a fresh folder under `
 on the kinematic backend and 41.67 ms on PyFlyt (Chapter 6: PyFlyt runs at 24 Hz effective). The
 controller still integrates with its 20 ms `dt` on both, which is Chapter 6's limitation, kept
 rather than corrected. The clock on the display orders events; it does not time them.
+
+**Measured runs (peer-review item P11).** `ticks.npz` in the run folder holds every tick: the
+`time.monotonic()` instant after the backend stepped, positions, velocities, targets, flight state
+and motors. Every message received is logged as `bus_received` with its receive instant and the
+Pi's `t_publish`, so `eval/closed_loop.py` can join the Pi's clock to this one through the probes of
+`demo/clock.py`, whose echo this process serves on `--clock-port`. `--cue` prints SPEAK NOW once
+per formation change, when the fastest vehicle first passes `CUE_SPEED`, which is when a spoken stop
+lands mid-change. `--auto-reset S` performs the reset out of ABORTED S seconds after every vehicle
+is on the ground and at rest, so abort takes need no key press. None of the three changes what a
+message does to the swarm.
 """
 
 from __future__ import annotations
@@ -47,12 +57,21 @@ from runtime.pipeline import Dispatcher
 from schema.logger import StructuredJsonFormatter, get_structured_logger
 from swarm.control import CLAMP_DISTANCE, COLLISION_DISTANCE
 from swarm.fsm import FlightState, FlightStateMachine
-from swarm.link import GroundNumpyEnv, GroundPyFlytEnv, Link, tick_seconds
+from swarm.link import GROUND_Z, REST_SPEED, GroundNumpyEnv, GroundPyFlytEnv, Link, tick_seconds
+
+try:
+    from demo.clock import CLOCK_PORT, serve_in_thread
+except ImportError:                                    # `python demo/workstation.py`
+    from clock import CLOCK_PORT, serve_in_thread
 
 __all__ = ["Event", "Station", "build"]
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BUS_PORT = 8766
+#: --cue: the fastest vehicle's speed at which a formation change is under way.
+CUE_SPEED = 1.0
+#: `ticks.partial.npz` is rewritten this often, so a process killed mid-run keeps its trace.
+SAVE_EVERY_S = 30.0
 logger = get_structured_logger("demo.station")
 
 _PATH = {"A": "reflex", "B": "parse"}
@@ -85,7 +104,14 @@ class Event:
 class Station:
     """The consumer: bus in, ordering rule, state machine, link. Drive it with `pump()` and `tick()`."""
 
-    def __init__(self, bus: CommandBus, link: Link, *, echo: bool = True) -> None:
+    def __init__(self, bus: CommandBus, link: Link, *, echo: bool = True, cue: bool = False,
+                 auto_reset: float | None = None) -> None:
+        self.cue = cue
+        self.auto_reset = auto_reset
+        self._cue_armed = False
+        self._rest_since: float | None = None
+        self._settle: str | None = None            # intent of the reflex stop awaiting rest
+        self._still_ticks = 0
         self.bus = bus
         self.link = link
         self.dispatcher = Dispatcher(link.fsm)
@@ -106,20 +132,22 @@ class Station:
                 logger.warning("bus message refused: %s", exc, extra={"event": "bus_message_refused"})
                 continue
             if msg is not None:
-                self._inbox.put(msg)
+                self._inbox.put((msg, time.monotonic()))
 
     def pump(self) -> int:
         """Apply every message received so far, in arrival order."""
         n = 0
         while True:
             try:
-                msg = self._inbox.get_nowait()
+                msg, t_recv = self._inbox.get_nowait()
             except queue.Empty:
                 return n
-            self.handle(msg)
+            self.handle(msg, t_recv)
             n += 1
 
-    def handle(self, msg: BusMessage) -> Event:
+    def handle(self, msg: BusMessage, t_recv: float | None = None) -> Event:
+        t_handle = time.monotonic()
+        t_recv = t_handle if t_recv is None else t_recv
         self.received += 1
         stale = msg.branch == "B" and msg.seq < self.highest_reflex
         if msg.branch == "A":
@@ -137,6 +165,17 @@ class Station:
             action = self.link.dispatch(cmd, before)
             rejected = cmd.intent == "hover" and asked != "hover"
             outcome = (f"rejected in {before.value} -> {action}" if rejected else action)
+            if cmd.intent == "formation" and "->" not in action and "refused" not in action:
+                self._cue_armed = True
+                self._settle = None
+            if cmd.intent in ("hover", "abort") and asked == cmd.intent and not stale:
+                self._cue_armed = False
+                self._settle, self._still_ticks = cmd.intent, 0
+        logger.info("bus received", extra={
+            "event": "bus_received", "seq": msg.seq, "branch": msg.branch, "command": msg.command,
+            "t_publish_pi": msg.t_publish, "t_recv": t_recv, "t_handle": t_handle,
+            "tick": self.link.ticks, "stale": stale, "state_before": before.value,
+            "dispatched": None if (cmd is None or stale) else cmd.intent, "outcome": outcome})
         return self._record(msg.seq, _PATH[msg.branch], summarise(msg.command), outcome)
 
     def tick(self) -> None:
@@ -150,6 +189,30 @@ class Station:
             self._record(None, "vehicles", what, f"{before.value} -> {after.value}")
         elif motors and not self.link.motors_on:
             self._record(None, "vehicles", "ground contact", "motors off")
+        speeds = np.linalg.norm(self.link.env.velocities, axis=1)
+        if self.cue and self._cue_armed and speeds.max() > CUE_SPEED:
+            self._cue_armed = False
+            logger.info("cue", extra={"event": "cue", "mono": time.monotonic(), "tick": self.link.ticks})
+            print("\a" + "=" * 24 + "  SPEAK NOW  " + "=" * 24, flush=True)
+        if self._settle is not None:
+            self._still_ticks = self._still_ticks + 1 if speeds.max() < REST_SPEED else 0
+            done = (not self.link.motors_on if self._settle == "abort"
+                    else self._still_ticks * tick_seconds(self.link.env) >= 0.5)
+            if done:
+                logger.info("settled", extra={"event": "settled", "intent": self._settle,
+                                              "mono": time.monotonic(), "tick": self.link.ticks})
+                print(f"------  SETTLED after {self._settle}  ------", flush=True)
+                self._settle = None
+        if self.auto_reset is not None and after == FlightState.ABORTED and not self.link.motors_on:
+            settled = (np.all(self.link.env.positions[:, 2] <= GROUND_Z) and speeds.max() < REST_SPEED)
+            now = time.monotonic()
+            if not settled:
+                self._rest_since = None
+            elif self._rest_since is None:
+                self._rest_since = now
+            elif now - self._rest_since >= self.auto_reset:
+                self._rest_since = None
+                self.reset()
 
     def reset(self) -> bool:
         ok = self.link.reset()
@@ -368,6 +431,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pybullet-debug-gui", action="store_true", help="keep PyBullet sidebar/slider controls")
     ap.add_argument("--seconds", type=float, default=None, help="stop after this long (default: until [q]/Ctrl-C)")
     ap.add_argument("--out", type=Path, default=None, help="run folder (default demo_runs/<time>-<backend>)")
+    ap.add_argument("--clock-port", type=int, default=CLOCK_PORT,
+                    help=f"echo demo/clock.py probes on this port (default {CLOCK_PORT}; 0 disables)")
+    ap.add_argument("--cue", action="store_true", help="print SPEAK NOW once per formation change under way")
+    ap.add_argument("--auto-reset", type=float, default=None, metavar="S",
+                    help="reset out of ABORTED S seconds after every vehicle is grounded and at rest")
     args = ap.parse_args(argv)
 
     out = args.out or REPO_ROOT / "demo_runs" / f"{_dt.datetime.now():%Y%m%d-%H%M%S}-{args.backend}"
@@ -381,7 +449,8 @@ def main(argv: list[str] | None = None) -> int:
                  cam_dist=args.cam_dist, cam_pitch=args.cam_pitch, cam_yaw=args.cam_yaw,
                  show_debug_gui=args.pybullet_debug_gui)
     bus = CommandBus(host=args.bind, port=args.port, bind=True)
-    station = Station(bus, link)
+    station = Station(bus, link, cue=args.cue, auto_reset=args.auto_reset)
+    clock_stop = serve_in_thread(args.clock_port, args.bind) if args.clock_port else None
     display = None if args.headless else Display(station, part, out)
     period = tick_seconds(link.env)
     print(f"{part}\nlistening on {args.bind}:{args.port}; tick {period * 1000:.2f} ms; run folder {out}",
@@ -389,8 +458,11 @@ def main(argv: list[str] | None = None) -> int:
 
     record_every = max(1, int(round(0.1 / period)))          # trajectory at 10 Hz
     trajectory: dict[str, list] = {"t": [], "wall": [], "state": [], "positions": [], "targets": []}
+    ticks: dict[str, list] = {"mono": [], "tick": [], "state": [], "motors": [], "positions": [],
+                              "velocities": [], "targets": []}
     states = list(FlightState)
     t0, n = time.monotonic(), 0
+    last_save = t0
     # Ctrl-C only sets a flag: a KeyboardInterrupt raised while Tk is redrawing
     # is caught and printed by Tk's own callback handler and never reaches this loop.
     stop: list[int] = []
@@ -409,6 +481,13 @@ def main(argv: list[str] | None = None) -> int:
             while n < due:
                 station.tick()
                 n += 1
+                ticks["mono"].append(time.monotonic())
+                ticks["tick"].append(link.ticks)
+                ticks["state"].append(states.index(link.fsm.state))
+                ticks["motors"].append(link.motors_on)
+                ticks["positions"].append(link.env.positions.copy())
+                ticks["velocities"].append(link.env.velocities.copy())
+                ticks["targets"].append(link.controller.targets.copy())
                 station.pump()
                 if n % record_every == 0:
                     trajectory["t"].append(n * period)
@@ -416,6 +495,11 @@ def main(argv: list[str] | None = None) -> int:
                     trajectory["state"].append(states.index(link.fsm.state))
                     trajectory["positions"].append(link.env.positions)
                     trajectory["targets"].append(link.controller.targets)
+            if time.monotonic() - last_save >= SAVE_EVERY_S:      # a killed process keeps its trace
+                last_save = time.monotonic()
+                np.savez(out / "ticks.partial.npz", states=np.array([s.value for s in states]),
+                         tick_seconds=period, backend=args.backend,
+                         **{k: np.asarray(v) for k, v in ticks.items()})
             if display:
                 display.update()
                 display.pause()
@@ -426,11 +510,16 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         signal.signal(signal.SIGINT, previous)
         station.close()
+        if clock_stop is not None:
+            clock_stop.set()
         bus.close()
         if hasattr(link.env, "close"):
             link.env.close()
         np.savez_compressed(out / "trajectory.npz", states=np.array([s.value for s in states]),
                             **{k: np.asarray(v) for k, v in trajectory.items()})
+        np.savez_compressed(out / "ticks.npz", states=np.array([s.value for s in states]),
+                            tick_seconds=period, backend=args.backend,
+                            **{k: np.asarray(v) for k, v in ticks.items()})
         print(f"final state {link.fsm.state.value}; closest approach {link.min_pair_distance:.2f} m; "
               f"clamp activations {link.clamp_activations}; saved {out}", flush=True)
     return 0

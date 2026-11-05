@@ -1,0 +1,3 @@
+{"condition": "offline", "part": 1, "backend": "pyflyt", "reflex_gate": "off", "governor": "performance",
+ "network": "Pi: nft table inet p11 drops every packet except loopback and the workstation (10.92.235.124); DNS fails, internet unreachable (offline_check.json). Workstation online.",
+ "notes": "Hold takes. An earlier offline attempt (offline_killed, 5 takes) lost its workstation process when the operator's session restarted and has no vehicle trace; it is not used. One take was skipped: its line command was parsed as a flock (a hold), and the repeat's cue came while the wizard waited at a prompt."}

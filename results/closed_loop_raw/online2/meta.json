@@ -1,0 +1,3 @@
+{"condition": "online", "part": 2, "backend": "pyflyt", "reflex_gate": "off", "governor": "performance",
+ "network": "Pi and workstation on the same Wi-Fi router; Pi internet reachable",
+ "notes": "The remaining 12 abort takes, after the microphone was reseated; a fresh runtime and consumer."}
