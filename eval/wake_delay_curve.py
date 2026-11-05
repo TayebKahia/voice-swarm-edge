@@ -22,6 +22,9 @@ first. It retrains nothing and selects nothing: the operating point stays the on
   Silero speech probability is >= 0.5 (the endpointer's own model and threshold).
   An independent detector, not a forced alignment: it shows how far the real-voice
   figure moves with the anchor, which is the question the 150 ms scale turns on.
+- *MFA (real).* The same takes, offset at the end of "hold"/"abort" in a Montreal Forced
+  Aligner alignment (`eval/forced_align_anchors.py`, P15; read from
+  `results/forced_align_anchors.json`, so run that first). The article's anchor since P15.
 
 **Delay is algorithmic.** First 80 ms frame at or above threshold, measured from the
 anchor, exactly as `train_wake.score_positives` measures it. Exp-2 shows the Pi adds
@@ -57,6 +60,7 @@ from eval.stats import nearest_rank, order_statistic_ci
 REPO = Path(__file__).resolve().parent.parent
 OUT_MD = REPO / "results" / "wake_delay_curve.md"
 OUT_JSON = REPO / "results" / "wake_delay_curve.json"
+ALIGNED = REPO / "results" / "forced_align_anchors.json"
 
 #: Coarse below 0.9, fine above it, where the operating point and the saturation are.
 GRID = (0.5, 0.7, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995, 0.998, 0.999)
@@ -160,14 +164,17 @@ def run() -> int:
     meta = json.loads(META.read_text())["takes"]
     takes = {take: _load_int16(TAKES / f"{take}.wav") for take in sorted(labels())}
     silero = silero_offsets(takes)
+    aligned = {t["take"]: t["mfa"] for t in json.loads(ALIGNED.read_text())["per_take"]}
     real = []
     for take, name in sorted(labels().items()):
         audio = takes[take]
         real.append({"take": take, "class": name,
                      "energy": PAD_S + meta[take]["seconds"] - meta[take]["tail_seconds"],
                      "silero": PAD_S + silero[take],
+                     "mfa": math.nan if aligned[take] is None else PAD_S + aligned[take]["kw_offset"],
                      "trace": stream_scores(model, np.concatenate([pad, audio, pad]))})
     anchor_gap_ms = [(r["silero"] - r["energy"]) * 1000.0 for r in real]
+    mfa_gap_ms = [(r["mfa"] - r["energy"]) * 1000.0 for r in real if not math.isnan(r["mfa"])]
 
     # Synthetic test split, exact keyword ends only.
     clips = json.loads(MANIFEST.read_text())["clips"]
@@ -193,10 +200,13 @@ def run() -> int:
         "operating_point": operating, "grid": list(GRID), "budget_ms": BUDGET_MS,
         "real_energy": curve(real, "energy", names),
         "real_silero": curve(real, "silero", names),
+        "real_mfa": curve(real, "mfa", names),
         "synthetic_exact": curve(synthetic, "exact", names),
         "false_accepts": false_accepts(streams),
         "anchor_gap_ms": {"median": float(np.median(anchor_gap_ms)),
                           "min": float(np.min(anchor_gap_ms)), "max": float(np.max(anchor_gap_ms))},
+        "mfa_gap_ms": {"median": float(np.median(mfa_gap_ms)),
+                       "min": float(np.min(mfa_gap_ms)), "max": float(np.max(mfa_gap_ms))},
         "peaks": {r["take"]: round(float(r["trace"][r["class"]].max()), 4) for r in real},
     }
     OUT_JSON.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
@@ -260,6 +270,14 @@ def markdown(record: dict, n_exact: int) -> str:
         f"Silero's end minus the energy end, per take: median {gap['median']:+.0f} ms, "
         f"range [{gap['min']:+.0f}, {gap['max']:+.0f}] ms.",
         "",
+        "## MFA anchor: the same 40 takes (end of \"hold\"/\"abort\" in a forced alignment, P15)",
+        "",
+        *_curve_table(record["real_mfa"], op),
+        "",
+        f"MFA's end minus the energy end, per take: median {record['mfa_gap_ms']['median']:+.0f} ms, "
+        f"range [{record['mfa_gap_ms']['min']:+.0f}, {record['mfa_gap_ms']['max']:+.0f}] ms "
+        "(`results/forced_align_anchors.md`).",
+        "",
         "## False accepts per hour at each threshold (debounce 1.0 s, Poisson 95% CI)",
         "",
         "| threshold | ambient (NFR-15) | near-miss (authored) | golden (author) |",
@@ -280,8 +298,12 @@ def markdown(record: dict, n_exact: int) -> str:
         "- **The exact anchor is synthetic.** Its clips are Piper renditions in the three "
         "training voices; it bounds what the spotter does when the anchor is right, not what "
         "it does on the operator's voice.",
-        "- **The real-voice anchors are detectors, not alignments.** They disagree by the "
-        "amounts above; a delay difference smaller than that disagreement is not resolved.",
+        "- **The exact end is the last sample above 1e-4.** On the clean renders it lies where the "
+        "level has fallen about 60 dB below the peak, a median 80 ms after MFA's end of the word, "
+        "which sits at about 40 dB below (`results/forced_align_anchors.md`). Against the MFA end, "
+        "the synthetic delays would be about that much longer.",
+        "- **Energy and Silero are detectors, not alignments.** They disagree by the amounts above; "
+        "MFA is the forced alignment the review asked for and the article's anchor.",
         "- **The curve is descriptive.** Choosing a new threshold from it would use the real "
         "takes for selection; any change of operating point must be chosen on val and "
         "re-measured on fresh takes.",

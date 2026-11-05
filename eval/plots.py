@@ -816,9 +816,15 @@ def reflex_means(condition: str) -> tuple[float, float, float, int]:
     rows = [r for r in _jsonl(EXP2_RAW / f"{condition}.jsonl") if r["pass"] == 0]
     pairs = [(r, first_own_event(r)) for r in rows]
     pairs = [(r, e) for r, e in pairs if e is not None]
-    algorithmic = [algorithmic_ms(r, e) for r, e in pairs]
-    system = [e["latency_offset_ms"] - a for (_, e), a in zip(pairs, algorithmic)]
-    total_p95 = nearest_rank([e["latency_offset_ms"] for _, e in pairs], 95)
+    #: Keyword offset from the forced alignment (P15, `eval/forced_align_anchors.py`), not the
+    #: capture tool's energy bound that Exp-2 stored: shift each take by the difference.
+    aligned = {t["take"]: t["mfa"]["kw_offset"]
+               for t in json.loads((RESULTS / "forced_align_anchors.json").read_text())["per_take"]}
+    shift = [(r["kw_offset_s"] - (1.0 + aligned[r["take"]])) * 1000 for r, _ in pairs]  # Exp-2's 1 s pad
+    algorithmic = [algorithmic_ms(r, e) + d for (r, e), d in zip(pairs, shift)]
+    totals = [e["latency_offset_ms"] + d for (_, e), d in zip(pairs, shift)]
+    system = [t - a for t, a in zip(totals, algorithmic)]
+    total_p95 = nearest_rank(totals, 95)
     return (sum(algorithmic) / len(pairs), sum(system) / len(pairs), total_p95, len(pairs))
 
 
@@ -869,7 +875,7 @@ def article_latency_paths() -> Path:
         bottom.set_yticklabels([f"reflex, idle\n(n = {n})", f"reflex, loaded\n(n = {n})"])
         bottom.set_xlim(0, 640)
         bottom.set_ylim(-0.5, 1.6)
-        bottom.set_xlabel("ms from keyword offset")
+        bottom.set_xlabel("ms from keyword offset (forced alignment)")
         bottom.legend(loc="upper center", bbox_to_anchor=(0.4, -0.42), ncol=2, frameon=False,
                       handlelength=1.0, columnspacing=0.8)
         for axes, tag in ((top, "(a)"), (bottom, "(b)")):

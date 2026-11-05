@@ -51,6 +51,23 @@ Delay is the first 80 ms frame at or above threshold, measured from the keyword'
 
 Silero's end minus the energy end, per take: median +116 ms, range [-184, +296] ms.
 
+## MFA anchor: the same 40 takes (end of "hold"/"abort" in a forced alignment, P15)
+
+| threshold | n | missed | FRR [95% CI] | p50 [95% CI] (ms) | p95 [95% CI] (ms) | before anchor | <= 150 ms |
+| ---: | ---: | ---: | :--- | :--- | :--- | ---: | ---: |
+| 0.5 | 40 | 0 | 0.000 [0.000, 0.088] | -10 [-50, 50] | 230 [180, --] | 20/40 | 33/40 |
+| 0.7 | 40 | 0 | 0.000 [0.000, 0.088] | 0 [-40, 60] | 230 [190, --] | 19/40 | 30/40 |
+| 0.8 | 40 | 0 | 0.000 [0.000, 0.088] | 10 [-40, 90] | 230 [190, --] | 18/40 | 30/40 |
+| 0.9 | 40 | 0 | 0.000 [0.000, 0.088] | 20 [-40, 130] | 230 [190, --] | 18/40 | 30/40 |
+| 0.95 | 40 | 0 | 0.000 [0.000, 0.088] | 50 [-40, 130] | 240 [190, --] | 16/40 | 30/40 |
+| 0.98 | 40 | 0 | 0.000 [0.000, 0.088] | 70 [-20, 140] | 260 [230, --] | 15/40 | 28/40 |
+| 0.99 | 40 | 0 | 0.000 [0.000, 0.088] | 70 [-10, 180] | 470 [260, --] | 14/40 | 26/40 |
+| 0.995 | 40 | 0 | 0.000 [0.000, 0.088] | 80 [20, 210] | 510 [290, --] | 12/40 | 25/40 |
+| 0.998 | 40 | 1 | 0.025 [0.001, 0.132] | 130 [30, 230] | 510 [340, --] | 11/39 | 22/39 |
+| 0.999 (operating) | 40 | 1 | 0.025 [0.001, 0.132] | 130 [30, 250] | 510 [380, --] | 10/39 | 21/39 |
+
+MFA's end minus the energy end, per take: median +55 ms, range [-270, +260] ms (`results/forced_align_anchors.md`).
+
 ## False accepts per hour at each threshold (debounce 1.0 s, Poisson 95% CI)
 
 | threshold | ambient (NFR-15) | near-miss (authored) | golden (author) |
@@ -71,5 +88,6 @@ Stream lengths: ambient 0.429 h, near-miss 0.100 h, golden 0.304 h.
 ## Read before quoting
 
 - **The exact anchor is synthetic.** Its clips are Piper renditions in the three training voices; it bounds what the spotter does when the anchor is right, not what it does on the operator's voice.
-- **The real-voice anchors are detectors, not alignments.** They disagree by the amounts above; a delay difference smaller than that disagreement is not resolved.
+- **The exact end is the last sample above 1e-4.** On the clean renders it lies where the level has fallen about 60 dB below the peak, a median 80 ms after MFA's end of the word, which sits at about 40 dB below (`results/forced_align_anchors.md`). Against the MFA end, the synthetic delays would be about that much longer.
+- **Energy and Silero are detectors, not alignments.** They disagree by the amounts above; MFA is the forced alignment the review asked for and the article's anchor.
 - **The curve is descriptive.** Choosing a new threshold from it would use the real takes for selection; any change of operating point must be chosen on val and re-measured on fresh takes.

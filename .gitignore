@@ -180,6 +180,10 @@ train/kaggle_out/adapters/**/adapter_model.safetensors
 # predictions ARE the input to Session 07's McNemar test, so they are tracked.
 !results/surface_b_preds/
 thesis/sample_thesis
+# P15 forced alignment: cut audio, MFA TextGrids and raw word lists (regenerate:
+# python eval/forced_align_anchors.py prepare|mfa|ctc). The per-take and per-phrase
+# anchors the article uses are kept in results/forced_align_anchors.json.
+results/forced_align_work/
 # Branch A: cached wake-corpus embeddings (regenerate: python train/train_wake.py;
 # head hashes and models are tracked in runtime/models/wake/)
 train/wake_features/
