@@ -7,9 +7,11 @@ import pytest
 
 from eval.exp2 import Loader, cross_trigger, first_own_event, keyword_rows, stage_rows, verdict
 
+_NO_SHIFT = lambda take, kind: 0.0  # noqa: E731  (synthetic takes have no forced alignment)
 
-def _trial(cls: str, *intents: str, **event: float) -> dict:
-    return {"class": cls, "kw_offset_s": 1.9, "events": [
+
+def _trial(cls: str, *intents: str, pass_: int = 0, **event: float) -> dict:
+    return {"class": cls, "take": "w01", "pass": pass_, "kw_offset_s": 1.9, "events": [
         {"intent": i, "frame_index": 24, "latency_offset_ms": 110.0, "latency_onset_ms": 700.0,
          "fsm_ms": 1.0, **event} for i in intents]}
 
@@ -33,21 +35,38 @@ def test_recovery_is_the_later_of_the_client_return_and_the_server_going_idle() 
             _trial("swarm_abort", "abort", in_flight=True, aborted=True, abort_return_ms=60.0,
                    server_idle_ms=20.0),
             _trial("swarm_abort", "abort", in_flight=False)]
-    recovery = next(r for r in keyword_rows(rows, "loaded") if r["measure"] == "recovery")
+    recovery = next(r for r in keyword_rows(rows, "loaded", _NO_SHIFT) if r["measure"] == "recovery")
     assert recovery["n"] == 2
     assert recovery["max"] == 60.0 and recovery["p50"] == 40.0
 
 
 def test_idle_rows_have_no_preemption_measures() -> None:
-    measures = {r["measure"] for r in keyword_rows([_trial("swarm_hold", "hover")], "idle")}
+    measures = {r["measure"] for r in keyword_rows([_trial("swarm_hold", "hover")], "idle", _NO_SHIFT)}
     assert measures == {"a_offset", "a_onset", "a_algorithmic", "a_system", "a_fsm"}
 
 
 def test_branch_a_latency_splits_into_the_spotter_and_the_pi() -> None:
     # Frame 24 ends at 25 x 80 ms = 2.00 s; the keyword ended at 1.90 s.
-    rows = {r["measure"]: r for r in keyword_rows([_trial("swarm_hold", "hover")], "idle")}
+    rows = {r["measure"]: r for r in keyword_rows([_trial("swarm_hold", "hover")], "idle", _NO_SHIFT)}
     assert rows["a_algorithmic"]["p50"] == pytest.approx(100.0)
     assert rows["a_system"]["p50"] == pytest.approx(10.0)
+
+
+def test_the_aligned_anchor_moves_the_spotter_share_and_not_the_pi_share() -> None:
+    # The aligned offset 30 ms before the energy one: 30 ms more of spotter delay, same Pi time.
+    shift = lambda take, kind: 30.0 if kind == "offset" else -100.0  # noqa: E731
+    rows = {r["measure"]: r for r in keyword_rows([_trial("swarm_hold", "hover")], "idle", shift)}
+    assert rows["a_offset"]["p50"] == pytest.approx(140.0)
+    assert rows["a_algorithmic"]["p50"] == pytest.approx(130.0)
+    assert rows["a_system"]["p50"] == pytest.approx(10.0)
+    assert rows["a_onset"]["p50"] == pytest.approx(600.0)
+
+
+def test_latency_rows_take_the_first_pass_and_recovery_both() -> None:
+    rows = [_trial("swarm_abort", "abort", pass_=p, in_flight=True, aborted=True, abort_return_ms=5.0,
+                   server_idle_ms=40.0) for p in (0, 1)]
+    by = {r["measure"]: r for r in keyword_rows(rows, "loaded", _NO_SHIFT)}
+    assert by["a_offset"]["n"] == 1 and by["recovery"]["n"] == 2
 
 
 def _segment(**kw: float) -> dict:

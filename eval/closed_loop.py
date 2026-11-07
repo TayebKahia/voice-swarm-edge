@@ -19,7 +19,9 @@ levels, a floor at the 10th percentile of the six seconds before the trigger, an
 level last rose 12 dB above that floor before the trigger, with gaps under 0.4 s bridged so that
 "swarm, hold" is one region. Sample times come from a line fitted under the frames' delivery stamps,
 so they carry the capture chain's own latency, a few milliseconds, which shortens every latency here
-by the same amount. The region's length is reported, as a check on the rule.
+by the same amount. The region's length is reported, as a check on the rule. The onset of record is
+the forced-aligned start of "swarm" (P15, `eval/anchors.py`), placed on the same sample clock; the
+energy region still decides "onset ambiguous", so no take changes outcome class.
 
 **Vehicle quantities**, from every tick of the backend (24 Hz):
     v0         fastest vehicle's speed on the last tick before the stop was applied
@@ -197,7 +199,10 @@ def load_audio(run: Path) -> tuple[np.ndarray, np.ndarray]:
     return audio[: tdue.size * FRAME], tdue
 
 
-def analyse_run(run: Path) -> tuple[dict, list[Take], dict]:
+def analyse_run(run: Path, onsets: dict[tuple[str, str, int], int | None] | None = None
+                ) -> tuple[dict, list[Take], dict]:
+    """One run's takes. `onsets` maps (run, path, seq) to the aligned onset sample
+    (`anchors.closed_loop_onsets()`); without it the energy onset is used."""
     meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
     condition = meta["condition"]
     pi = jsonl(run / "pi.jsonl")
@@ -237,6 +242,9 @@ def analyse_run(run: Path) -> tuple[dict, list[Take], dict]:
         take.clock_bound_ms = bound * 1000
         take.publish_to_apply_ms = (t_apply - (t_publish + offset)) * 1000
         found = find_onset(audio, trigger_sample)
+        if onsets is not None and (run.name, path, seq) in onsets:
+            aligned = onsets[(run.name, path, seq)]
+            found = None if found is None or aligned is None else (aligned, found[1])
         t_onset_ws = None
         if found is not None:
             onset_sample, take.region_s = found
@@ -383,7 +391,7 @@ ROWS = [
 ]
 
 
-def report(runs: list[tuple[dict, list[Take], dict]]) -> str:
+def report(runs: list[tuple[dict, list[Take], dict]], onset_note: str | None = None) -> str:
     takes = [t for _, ts, _ in runs for t in ts]
     lines = [
         "### Closed loop: spoken stop to vehicle arrest (B-M4, P11)", "",
@@ -392,7 +400,8 @@ def report(runs: list[tuple[dict, list[Take], dict]]) -> str:
         "consumer, flight state machine, `swarm/link.py` and the PyFlyt rigid-body backend (no "
         "separation clamp) on the workstation. A take is one spoken stop during a formation change. "
         "Latencies in ms. Intervals: order statistics for medians (95%), exact (Clopper-Pearson) for "
-        "proportions. Distances are horizontal, the largest over the five vehicles.", "",
+        "proportions. Distances are horizontal, the largest over the five vehicles."
+        + (f" {onset_note}" if onset_note else ""), "",
         "#### Runs", "",
         "| Run | Condition | Governor | Cues | Reflex triggers (hold/abort) | Stale parses discarded | "
         "Clock bound, run fit / largest per stop (ms) | Tick p50 (ms) | Re-anchors | Max temp (C) | Throttle flags | Overruns |",
@@ -461,11 +470,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=OUT_MD)
     ap.add_argument("--takes", type=Path, default=OUT_TAKES)
     args = ap.parse_args(argv)
-    runs = [analyse_run(r) for r in sorted(args.raw.iterdir()) if (r / "meta.json").is_file()]
+    from eval.anchors import closed_loop_onsets
+
+    onsets = closed_loop_onsets()
+    runs = [analyse_run(r, onsets) for r in sorted(args.raw.iterdir()) if (r / "meta.json").is_file()]
     if not runs:
         print(f"no runs under {args.raw}", file=sys.stderr)
         return 1
-    args.out.write_text(report(runs), encoding="utf-8")
+    note = ("Utterance onset: the forced-aligned start of \"swarm\" (P15); the energy rule's region "
+            "decides \"onset ambiguous\" (`results/forced_align_anchors.md` compares the anchors).")
+    args.out.write_text(report(runs, note), encoding="utf-8")
     with open(args.takes, "w", encoding="utf-8") as fh:
         for _, takes, _ in runs:
             for t in takes:

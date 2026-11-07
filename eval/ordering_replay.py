@@ -249,10 +249,14 @@ def analyse(results: Path) -> int:
     aborted = {m: Counter(r["final_state"] for r in by_mode[m] if r["class"] == "swarm_abort") for m in MODES}
     lines += ["", f"Final state on abort takes: acceptance {dict(aborted['acceptance'])}, "
               f"onset {dict(aborted['onset'])}.", "", "#### Reflex path with the parse path on (ms, Pi)", "",
+              "From the forced-aligned keyword offset (P15).", "",
               "| Mode | n | keyword offset, p50 [95% CI] | keyword offset, p95 [95% CI] |",
               "| :--- | ---: | :--- | :--- |"]
+    from eval.anchors import take_shift_ms
+
     for m in MODES:
-        values = [e["latency_offset_ms"] for r in by_mode[m] if (e := first_own_event(r)) is not None]
+        values = [e["latency_offset_ms"] + take_shift_ms(r["take"], "offset")
+                  for r in by_mode[m] if (e := first_own_event(r)) is not None]
         lines.append(f"| `{m}` | {len(values)} | {_pcts(values)} |")
     lines += ["", f"SoC at trial start: {min(temps):.1f}-{max(temps):.1f} C; throttle word {dict(flags)}." if temps
               else "", ""]

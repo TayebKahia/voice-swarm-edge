@@ -11,12 +11,12 @@ outside, and otherwise *not demonstrated*.
 | Criterion | Target | Measured | Verdict | Section |
 | :--- | :--- | :--- | :--- | :--- |
 | Offline speech recognition | On the device, no network | No run with networking disabled | Not yet run | [ref](#sec:demonstration-protocol) |
-| Reflex path | Preempts the parse path | 78/78 decodes cancelled; 0 cross-triggers | Met | [ref](#sec:latency-experiment) |
+| Reflex path | Preempts the parse path | 78/78 decodes cancelled; ordering rule unit-tested; 0 cross-triggers | Met | [ref](#sec:latency-experiment) |
 | Swarm controller | Formation control, five drones | 150/150 trials converged | Met | [ref](#sec:formation-control) |
 | Simulation backends | Hover smoke test on both | Passes on both, same gains | Met | [ref](#sec:simulation-backends) |
 | Live demonstration | Live microphone, end to end | -- | Planned for the defence | [ref](#sec:demonstration-protocol) |
 | Flight state machine | Every legality cell tested | Every cell passes | Met | [ref](#sec:state-machine) |
-| Reflex latency | p95 ≤ 150 ms | 545 ms idle, 547 ms loaded | Missed | [ref](#sec:latency-experiment) |
+| Reflex latency | p95 ≤ 150 ms | 515 ms idle, 518 ms loaded | Missed | [ref](#sec:latency-experiment) |
 | End-to-end latency | p95 ≤ 2,500 ms | 3,122 ms | Missed | [ref](#sec:latency-experiment) |
 | Per-stage attribution | Every stage, p50/p95/p99 | All 5 stages | Met | [ref](#sec:latency-experiment) |
 | Preemption recovery | p95 ≤ 300 ms | 1,195 ms | Missed | [ref](#sec:latency-experiment) |

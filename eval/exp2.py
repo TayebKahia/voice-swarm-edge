@@ -22,10 +22,13 @@ conditions kept, because NFR-1 means nothing without both):
            in `eval/exp3.py`'s row format so A7b can diff them against A7a.
   idle     The same 80 keyword trials with Branch B resident and idle (NFR-1, idle).
 
-**Anchors (prd.md Sec. 4.4, 4.7).** Branch A: from keyword *offset*, the capture
-tool's own end-of-speech (`session_meta.json`: take length minus trailing silence),
-to the bus publish, so frame quantisation and debounce are inside the figure; the
-onset-anchored figure (lead silence) is reported beside it. Branch B: from T0, the
+**Anchors (prd.md Sec. 4.4, 4.7).** Branch A: from keyword *offset* to the bus publish,
+so frame quantisation and debounce are inside the figure; the onset-anchored figure is
+reported beside it. The trial logs time each publication from the capture tool's
+energy bounds (`session_meta.json`); the analysis re-states it from the forced-aligned
+end of "hold"/"abort" and start of "swarm" (P15, `eval/anchors.py`). Branch A latency
+rows take the take as the unit (first pass, one detection per take); the cross-trigger
+matrix and the recovery rows use both passes. Branch B: from T0, the
 wall time of the last sample the VAD had consumed when it declared end of speech,
 to the FSM having applied the command. The figure from the *true* end of speech adds
 the VAD's own wait (Table 6 row 1); both are reported.
@@ -508,25 +511,41 @@ def algorithmic_ms(row: dict, event: dict) -> float:
     return ((event["frame_index"] + 1) * FRAME_S - row["kw_offset_s"]) * 1000
 
 
-def keyword_rows(rows: Sequence[dict], condition: str) -> list[dict]:
-    pairs = [(r, first_own_event(r)) for r in rows if first_own_event(r) is not None]
-    detected = [e for _, e in pairs]
-    algorithmic = [algorithmic_ms(r, e) for r, e in pairs]
+def aligned_latencies(rows: Sequence[dict], shift=None) -> list[dict]:
+    """First-pass detections with their latencies from the forced-aligned anchors (P15).
+
+    `shift(take, kind)` is the energy-minus-aligned anchor in ms (`anchors.take_shift_ms`)."""
+    if shift is None:
+        from eval.anchors import take_shift_ms as shift
+
+    out = []
+    for r in rows:
+        e = first_own_event(r) if r["pass"] == 0 else None
+        if e is None:
+            continue
+        d_off = shift(r["take"], "offset")
+        algorithmic = algorithmic_ms(r, e)
+        out.append({"take": r["take"], "offset": e["latency_offset_ms"] + d_off,
+                    "onset": e["latency_onset_ms"] + shift(r["take"], "onset"),
+                    "algorithmic": algorithmic + d_off, "system": e["latency_offset_ms"] - algorithmic,
+                    "fsm": e["fsm_ms"]})
+    return out
+
+
+def keyword_rows(rows: Sequence[dict], condition: str, shift=None) -> list[dict]:
+    detected = [first_own_event(r) for r in rows if first_own_event(r) is not None]
+    takes = aligned_latencies(rows, shift)
+    col = lambda key: [t[key] for t in takes]  # noqa: E731
     out = [{"measure": "a_offset", "label": f"Branch A from keyword offset ({condition})",
-            "condition": condition, **percentiles([e["latency_offset_ms"] for e in detected]),
-            "budget_p95_ms": BUDGETS["a_offset"]},
+            "condition": condition, **percentiles(col("offset")), "budget_p95_ms": BUDGETS["a_offset"]},
            {"measure": "a_onset", "label": f"Branch A from keyword onset ({condition})",
-            "condition": condition, **percentiles([e["latency_onset_ms"] for e in detected]),
-            "budget_p95_ms": BUDGETS["a_onset"]},
+            "condition": condition, **percentiles(col("onset")), "budget_p95_ms": BUDGETS["a_onset"]},
            {"measure": "a_algorithmic", "label": f"  of which spotter delay + frame quantisation ({condition})",
-            "condition": condition, **percentiles(algorithmic), "budget_p95_ms": None},
+            "condition": condition, **percentiles(col("algorithmic")), "budget_p95_ms": None},
            {"measure": "a_system", "label": f"  of which Pi compute + publish ({condition})",
-            "condition": condition,
-            **percentiles([e["latency_offset_ms"] - a for (_, e), a in zip(pairs, algorithmic)]),
-            "budget_p95_ms": None},
+            "condition": condition, **percentiles(col("system")), "budget_p95_ms": None},
            {"measure": "a_fsm", "label": f"Branch A publish to FSM applied ({condition})",
-            "condition": condition, **percentiles([e["fsm_ms"] for e in detected]),
-            "budget_p95_ms": None}]
+            "condition": condition, **percentiles(col("fsm")), "budget_p95_ms": None}]
     if condition == "loaded":
         pre = [e for e in detected if e.get("in_flight") and e.get("aborted")]
         recovery = [max(e["abort_return_ms"], e["server_idle_ms"]) for e in pre
@@ -560,7 +579,7 @@ def analyse() -> int:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         for row in table:
-            writer.writerow({k: (round(v, 1) if isinstance(v, float) else v) for k, v in row.items()})
+            writer.writerow({k: (round(v, 2) if isinstance(v, float) else v) for k, v in row.items()})
     (RESULTS / "exp2_analysis.md").write_text(analysis_markdown(phases, table), encoding="utf-8")
     print(f"wrote results/exp2.csv ({len(table)} rows) and results/exp2_analysis.md")
     for row in table:
@@ -589,7 +608,8 @@ def analysis_markdown(phases: dict, table: Sequence[dict]) -> str:
         lines.append(f"| {r['label']} | {r['condition']} | {r['n']} | {_ms(r['p50'])} | {_ms(r['p95'])} "
                      f"| {_ms(r['p99'])} | {_ms(r['max'])} | {_ms(r['budget_p95_ms'])} | {r['verdict']} |")
     lines += ["", "All times ms, nearest-rank percentiles. Branch B rows count endpointed segments, "
-              "not utterances."]
+              "not utterances. Branch A latency rows count takes (first pass) and are timed from "
+              "the forced-aligned keyword (P15); recovery rows count both passes."]
 
     if "branch_b" in phases:
         rows = phases["branch_b"]
@@ -614,12 +634,11 @@ def analysis_markdown(phases: dict, table: Sequence[dict]) -> str:
                   "| :--- | ---: | ---: | ---: | ---: |"]
         for c, cell in matrix.items():
             lines.append(f"| `{c}` | {cell['n']} | {cell['hover']} | {cell['abort']} | {cell['missed']} |")
-        # The offset is the capture tool's energy-based end of speech; a detection that
-        # precedes it measures the anchor's error, not a negative spotter delay.
-        early = sorted((e["latency_offset_ms"], r["take"]) for r in phases[condition]
-                       if (e := first_own_event(r)) is not None and e["latency_offset_ms"] < 0)
-        n_detected = sum(first_own_event(r) is not None for r in phases[condition])
-        lines += ["", f"Detections before the recorded keyword offset: {len(early)}/{n_detected}"
+        # The aligned offset is where the aligner ends the last phone, not the last audible
+        # sample; a detection that precedes it measures that, not a negative spotter delay.
+        takes = aligned_latencies(phases[condition])
+        early = sorted((t["offset"], t["take"]) for t in takes if t["offset"] < 0)
+        lines += ["", f"Detections before the aligned keyword offset (first pass): {len(early)}/{len(takes)}"
                   + (f", earliest {early[0][0]:.1f} ms (takes {', '.join(sorted({t for _, t in early}))})."
                      if early else ".")]
     if "loaded" in phases:
@@ -661,8 +680,8 @@ def analysis_markdown(phases: dict, table: Sequence[dict]) -> str:
               "figures (prd 4.7).",
               "- Prefill runs with `cache_prompt=false`, as the deployed parser does for Surface B "
               "parity; Table 6's prefill line assumes a cached prefix (Exp-1 measured that case).",
-              "- Keyword offset is the capture tool's energy-based end of speech, not a forced "
-              "alignment."]
+              "- Keyword anchors are the forced alignment's (P15); `results/forced_align_anchors.md` "
+              "gives the same rows from the capture tool's energy bounds."]
     return "\n".join(lines) + "\n"
 
 

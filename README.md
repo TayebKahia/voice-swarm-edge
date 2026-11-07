@@ -22,7 +22,7 @@ Natural spoken commands (e.g., *"Swarm, form a line with two-meter spacing at fi
 
 - **100% Offline Edge Execution**: Full speech recognition, SLM intent extraction, and swarm flight physics execute locally on a single Raspberry Pi 5 with zero internet connection.
 - **Dual-Path Latency Architecture**:
-  - **Branch A (Reflex Path, target ≤ 150 ms — measured p95: 545 ms, MISSED)**: Direct wake-word spotting (`openWakeWord` ONNX model) dedicated exclusively to safety-critical commands (`swarm abort` and `swarm hold`). Preempts Branch B by sequence counter.
+  - **Branch A (Reflex Path, target ≤ 150 ms — measured p95: 515 ms idle, 518 ms loaded, MISSED)**: Direct wake-word spotting (`openWakeWord` ONNX model) dedicated exclusively to safety-critical commands (`swarm abort` and `swarm hold`). Preempts Branch B by sequence counter.
   - **Branch B (Language Path, target ≤ 2,500 ms p95 — measured p95: 3,122 ms, MISSED)**: Silero VAD endpointing $\to$ `whisper.cpp` (`tiny.en`) $\to$ Fine-tuned Small Language Model (SLM) with strict GBNF grammar-constrained decoding.
 - **3-Tier Verification & Safety Guardrails**:
   1. **Structural Enforcement (GBNF)**: Grammar-constrained logits masking guarantees 100% valid JSON syntax at generation time.
@@ -247,7 +247,7 @@ Every table and figure in the research is backed by frozen datasets and committe
 
 - **Exp-0 (Acoustic Sensitivity)**: Evaluates `whisper.cpp` across accent subsets using Mozilla Common Voice 17.0.
 - **Exp-1 (SLM Comparison & Grammar Ablation)**: Measures exact-match JSON generation across 4 model families (`Qwen2.5-0.5B`, `SmolLM2-360M`, `Llama-3.2-1B`, `H2O-Danube3-500M`) with and without GBNF constrained decoding.
-- **Exp-2 (Dual-Path Latency Profiling)**: Measures end-to-end timing on Raspberry Pi 5. Branch A p95 measured at 545 ms (target ≤ 150 ms, **MISSED**); Branch B end-to-end p95 measured at 3,122 ms (target ≤ 2,500 ms, **MISSED**). See [`results/exp2_latency_budget.md`](results/exp2_latency_budget.md) for the full breakdown.
+- **Exp-2 (Dual-Path Latency Profiling)**: Measures end-to-end timing on Raspberry Pi 5. Branch A p95 measured at 515 ms idle and 518 ms loaded from the forced-aligned end of the keyword (target ≤ 150 ms, **MISSED**); almost all of it is the spotter's decision delay, the board adding 5–18 ms. Branch B end-to-end p95 measured at 3,122 ms (target ≤ 2,500 ms, **MISSED**). See [`results/exp2_latency_budget.md`](results/exp2_latency_budget.md) for the full breakdown and [`results/forced_align_anchors.md`](results/forced_align_anchors.md) for the keyword anchors.
 - **Exp-3 (Acoustic Robustness)**: Evaluates command recognition under synthetic and real ambient noise across calibrated SNR levels (20 dB down to 5 dB).
 - **Exp-4 (Formation Flight Validation)**: Validates swarm formation convergence and inter-agent collision separation clamps.
 

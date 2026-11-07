@@ -12,7 +12,8 @@ condition. Replaying the same audio through the same deterministic spotter repro
 the detection frame, so the second pass is a determinism check, not a second
 observation. The reflex rows are therefore recomputed on the first pass of each take,
 the replay difference is reported, and detection, cancellation and class confusion are
-given as counts over takes with exact (Clopper-Pearson) intervals.
+given as counts over takes with exact (Clopper-Pearson) intervals. Reflex latencies are
+timed from the forced-aligned keyword (P15, `eval/anchors.py`).
 
 Sources: `results/exp1_cooled.csv` and `results/exp1.csv` (language-model timing, master
 article), `results/exp2_raw/*.jsonl` (parse and reflex paths, ingenieur article).
@@ -35,6 +36,7 @@ if __package__ in (None, ""):  # `python eval/latency_ci.py`
 
 from scipy.stats import binomtest
 
+from eval.anchors import take_shift_ms
 from eval.exp2 import algorithmic_ms, first_own_event
 from eval.stats import nearest_rank, order_statistic_ci
 
@@ -106,8 +108,9 @@ def _ci(successes: int, trials: int) -> str:
 
 def reflex_section() -> list[str]:
     lines = ["", "### Reflex path with the take as the unit (ingenieur article, Exp-2)", "",
-             "First pass of each take. Replay difference: largest absolute difference in",
-             "latency from offset between the two passes of a take."]
+             "First pass of each take, timed from the forced-aligned keyword (P15). Replay",
+             "difference: largest absolute difference in latency from offset between the two",
+             "passes of a take."]
     for condition in ("idle", "loaded"):
         rows = _jsonl(f"{condition}.jsonl")
         by_take: dict[str, dict[int, dict]] = defaultdict(dict)
@@ -119,12 +122,14 @@ def reflex_section() -> list[str]:
                       for passes in by_take.values() if len(passes) == 2
                       if (e0 := first_own_event(passes[0])) and (e1 := first_own_event(passes[1]))]
         algorithmic = [algorithmic_ms(r, e) for r, e in pairs]
+        d_off = [take_shift_ms(r["take"], "offset") for r, _ in pairs]
         lines += ["", f"#### {condition}", "", *HEADER,
-                  _row("from keyword offset", [e["latency_offset_ms"] for _, e in pairs]),
-                  _row("  spotter delay + frame quantisation", algorithmic),
+                  _row("from keyword offset", [e["latency_offset_ms"] + d for (_, e), d in zip(pairs, d_off)]),
+                  _row("  spotter delay + frame quantisation", [a + d for a, d in zip(algorithmic, d_off)]),
                   _row("  Pi compute + publish",
                        [e["latency_offset_ms"] - a for (_, e), a in zip(pairs, algorithmic)]),
-                  _row("from keyword onset", [e["latency_onset_ms"] for _, e in pairs])]
+                  _row("from keyword onset", [e["latency_onset_ms"] + take_shift_ms(r["take"], "onset")
+                                              for r, e in pairs])]
         if condition == "loaded":
             # Recovery waits on the server's once-a-second poll, whose phase differs between
             # the two passes of a take, so both passes are kept here: the audio repeats, the

@@ -19,20 +19,20 @@ Host `drone-pi`, governor `performance`, started 2026-09-23T15:34:29+0100. llama
 | E2E from T0 (NFR-2 headline) | branch_b | 226 | 2,441 | 3,122 | 3,380 | 3,681 | 2,500 | MISSES |
 | E2E from true end of speech (+ VAD wait) | branch_b | 226 | 2,921 | 3,602 | 3,860 | 4,161 | 2,500 | MISSES |
 | E2E from start of speech | branch_b | 226 | 6,343 | 10,086 | 12,322 | 14,363 | -- |  |
-| Branch A from keyword offset (idle) | idle | 78 | 195 | 545 | 555 | 555 | 150 | MISSES |
-| Branch A from keyword onset (idle) | idle | 78 | 965 | 1,265 | 1,265 | 1,265 | 850 | MISSES |
-|   of which spotter delay + frame quantisation (idle) | idle | 78 | 190 | 540 | 550 | 550 | -- |  |
-|   of which Pi compute + publish (idle) | idle | 78 | 5 | 6 | 6 | 6 | -- |  |
-| Branch A publish to FSM applied (idle) | idle | 78 | 1 | 2 | 2 | 2 | -- |  |
-| Branch A from keyword offset (loaded) | loaded | 78 | 205 | 547 | 564 | 564 | 150 | MISSES |
-| Branch A from keyword onset (loaded) | loaded | 78 | 967 | 1,266 | 1,278 | 1,278 | 850 | MISSES |
-|   of which spotter delay + frame quantisation (loaded) | loaded | 78 | 190 | 540 | 550 | 550 | -- |  |
-|   of which Pi compute + publish (loaded) | loaded | 78 | 12 | 18 | 19 | 19 | -- |  |
-| Branch A publish to FSM applied (loaded) | loaded | 78 | 2 | 6 | 14 | 14 | -- |  |
+| Branch A from keyword offset (idle) | idle | 39 | 135 | 515 | 555 | 555 | 150 | MISSES |
+| Branch A from keyword onset (idle) | idle | 39 | 1,055 | 1,355 | 1,375 | 1,375 | 850 | MISSES |
+|   of which spotter delay + frame quantisation (idle) | idle | 39 | 130 | 510 | 550 | 550 | -- |  |
+|   of which Pi compute + publish (idle) | idle | 39 | 5 | 5 | 6 | 6 | -- |  |
+| Branch A publish to FSM applied (idle) | idle | 39 | 1 | 2 | 2 | 2 | -- |  |
+| Branch A from keyword offset (loaded) | loaded | 39 | 144 | 518 | 564 | 564 | 150 | MISSES |
+| Branch A from keyword onset (loaded) | loaded | 39 | 1,057 | 1,364 | 1,376 | 1,376 | 850 | MISSES |
+|   of which spotter delay + frame quantisation (loaded) | loaded | 39 | 130 | 510 | 550 | 550 | -- |  |
+|   of which Pi compute + publish (loaded) | loaded | 39 | 13 | 18 | 19 | 19 | -- |  |
+| Branch A publish to FSM applied (loaded) | loaded | 39 | 1 | 5 | 8 | 8 | -- |  |
 | trigger to aborted decode returning | loaded | 78 | 4 | 6 | 14 | 14 | -- |  |
 | NFR-17 recovery: trigger to Branch B free | loaded | 78 | 601 | 1,195 | 1,505 | 1,505 | 300 | MISSES |
 
-All times ms, nearest-rank percentiles. Branch B rows count endpointed segments, not utterances.
+All times ms, nearest-rank percentiles. Branch B rows count endpointed segments, not utterances. Branch A latency rows count takes (first pass) and are timed from the forced-aligned keyword (P15); recovery rows count both passes.
 
 ## Branch B, clean golden set
 
@@ -47,7 +47,7 @@ All times ms, nearest-rank percentiles. Branch B rows count endpointed segments,
 | `swarm_hold` | 40 | 38 | 0 | 2 |
 | `swarm_abort` | 40 | 0 | 40 | 0 |
 
-Detections before the recorded keyword offset: 6/78, earliest -234.7 ms (takes w06, w28, w29).
+Detections before the aligned keyword offset (first pass): 10/39, earliest -94.7 ms (takes w06, w08, w10, w18, w20, w22, w28, w30, w36, w40).
 
 ## Branch A, loaded: cross-trigger matrix
 
@@ -56,7 +56,7 @@ Detections before the recorded keyword offset: 6/78, earliest -234.7 ms (takes w
 | `swarm_hold` | 40 | 38 | 0 | 2 |
 | `swarm_abort` | 40 | 0 | 40 | 0 |
 
-Detections before the recorded keyword offset: 4/78, earliest -234.0 ms (takes w06, w28).
+Detections before the aligned keyword offset (first pass): 9/39, earliest -82.0 ms (takes w06, w08, w18, w20, w22, w28, w30, w36, w40).
 
 ## Pre-emption (FR-6, NFR-17)
 
@@ -83,4 +83,4 @@ Detections before the recorded keyword offset: 4/78, earliest -234.0 ms (takes w
 - The operating point (0.999) and the per-class ROC are `results/wake_training.md`'s; not re-selected here. Ambient false accepts: 2.33/h, 95% CI [0.06, 12.98] (NFR-15 not demonstrated).
 - The bus is loopback on the Pi; the Wi-Fi hop to the workstation is not in these figures (prd 4.7).
 - Prefill runs with `cache_prompt=false`, as the deployed parser does for Surface B parity; Table 6's prefill line assumes a cached prefix (Exp-1 measured that case).
-- Keyword offset is the capture tool's energy-based end of speech, not a forced alignment.
+- Keyword anchors are the forced alignment's (P15); `results/forced_align_anchors.md` gives the same rows from the capture tool's energy bounds.

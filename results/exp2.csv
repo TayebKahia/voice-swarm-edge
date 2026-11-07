@@ -1,24 +1,24 @@
 measure,label,condition,n,p50,p95,p99,max,budget_p95_ms,verdict
 vad_wait,VAD endpointing wait,branch_b,226,480.0,480.0,480.0,480.0,500,MEETS
-queue,queue (segment waits for Branch B),branch_b,226,40.2,73.1,429.7,1231.1,,
-stt,"STT (whisper-cli, -t 3)",branch_b,226,1246.2,1448.7,1570.7,2992.3,1200,MISSES
-prefill,"SLM prefill (server timing, no prompt cache)",branch_b,226,570.5,750.6,849.2,950.2,250,MISSES
-decode,SLM decode (server timing),branch_b,226,560.7,914.8,983.5,984.7,1100,MEETS
-llm,SLM prefill + decode (Table 6 combined row),branch_b,226,1112.4,1657.7,1775.4,1865.0,1350,MISSES
-http,"SLM request overhead (template, tokenize, HTTP)",branch_b,226,7.8,8.3,9.9,10.8,,
-validate_fsm,"validate, bus, FSM check",branch_b,226,0.3,0.5,3.5,13.5,50,MEETS
-e2e_t0,E2E from T0 (NFR-2 headline),branch_b,226,2441.3,3122.5,3380.3,3681.1,2500,MISSES
-e2e_speech_end,E2E from true end of speech (+ VAD wait),branch_b,226,2921.3,3602.5,3860.3,4161.1,2500,MISSES
-e2e_speech_start,E2E from start of speech,branch_b,226,6343.5,10086.2,12321.9,14363.3,,
-a_offset,Branch A from keyword offset (idle),idle,78,195.4,545.4,555.4,555.4,150,MISSES
-a_onset,Branch A from keyword onset (idle),idle,78,965.3,1265.3,1265.4,1265.4,850,MISSES
-a_algorithmic,  of which spotter delay + frame quantisation (idle),idle,78,190.0,540.0,550.0,550.0,,
-a_system,  of which Pi compute + publish (idle),idle,78,5.4,5.5,5.7,5.7,,
-a_fsm,Branch A publish to FSM applied (idle),idle,78,1.4,1.9,1.9,1.9,,
-a_offset,Branch A from keyword offset (loaded),loaded,78,204.6,546.6,563.6,563.6,150,MISSES
-a_onset,Branch A from keyword onset (loaded),loaded,78,966.6,1266.0,1277.9,1277.9,850,MISSES
-a_algorithmic,  of which spotter delay + frame quantisation (loaded),loaded,78,190.0,540.0,550.0,550.0,,
-a_system,  of which Pi compute + publish (loaded),loaded,78,12.3,18.0,18.9,18.9,,
-a_fsm,Branch A publish to FSM applied (loaded),loaded,78,1.6,6.0,14.0,14.0,,
-abort_return,trigger to aborted decode returning,loaded,78,3.9,6.5,14.1,14.1,,
-recovery,NFR-17 recovery: trigger to Branch B free,loaded,78,601.4,1194.8,1505.3,1505.3,300,MISSES
+queue,queue (segment waits for Branch B),branch_b,226,40.24,73.09,429.73,1231.07,,
+stt,"STT (whisper-cli, -t 3)",branch_b,226,1246.22,1448.73,1570.66,2992.31,1200,MISSES
+prefill,"SLM prefill (server timing, no prompt cache)",branch_b,226,570.5,750.63,849.2,950.21,250,MISSES
+decode,SLM decode (server timing),branch_b,226,560.71,914.77,983.5,984.74,1100,MEETS
+llm,SLM prefill + decode (Table 6 combined row),branch_b,226,1112.43,1657.68,1775.4,1864.98,1350,MISSES
+http,"SLM request overhead (template, tokenize, HTTP)",branch_b,226,7.81,8.34,9.87,10.82,,
+validate_fsm,"validate, bus, FSM check",branch_b,226,0.32,0.52,3.48,13.48,50,MEETS
+e2e_t0,E2E from T0 (NFR-2 headline),branch_b,226,2441.35,3122.48,3380.27,3681.1,2500,MISSES
+e2e_speech_end,E2E from true end of speech (+ VAD wait),branch_b,226,2921.35,3602.48,3860.27,4161.1,2500,MISSES
+e2e_speech_start,E2E from start of speech,branch_b,226,6343.49,10086.15,12321.93,14363.3,,
+a_offset,Branch A from keyword offset (idle),idle,39,135.35,515.35,555.36,555.36,150,MISSES
+a_onset,Branch A from keyword onset (idle),idle,39,1055.35,1355.38,1375.35,1375.35,850,MISSES
+a_algorithmic,  of which spotter delay + frame quantisation (idle),idle,39,130.0,510.0,550.0,550.0,,
+a_system,  of which Pi compute + publish (idle),idle,39,5.34,5.47,5.73,5.73,,
+a_fsm,Branch A publish to FSM applied (idle),idle,39,1.46,1.9,1.93,1.93,,
+a_offset,Branch A from keyword offset (loaded),loaded,39,144.48,517.77,563.64,563.64,150,MISSES
+a_onset,Branch A from keyword onset (loaded),loaded,39,1056.74,1363.8,1376.04,1376.04,850,MISSES
+a_algorithmic,  of which spotter delay + frame quantisation (loaded),loaded,39,130.0,510.0,550.0,550.0,,
+a_system,  of which Pi compute + publish (loaded),loaded,39,13.44,18.03,18.88,18.88,,
+a_fsm,Branch A publish to FSM applied (loaded),loaded,39,1.48,5.22,7.84,7.84,,
+abort_return,trigger to aborted decode returning,loaded,78,3.87,6.49,14.08,14.08,,
+recovery,NFR-17 recovery: trigger to Branch B free,loaded,78,601.45,1194.78,1505.32,1505.32,300,MISSES

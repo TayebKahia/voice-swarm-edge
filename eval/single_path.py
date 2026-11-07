@@ -9,7 +9,8 @@ This script removes that confound. Every one of the author's 40 takes (`swarm ho
 `swarm abort`) goes through the deployed parse path --- Silero endpointing, whisper,
 the grammar-constrained parser, validation, the bus and the FSM --- with the reflex
 path removed, and latency is measured from the same keyword offset Exp-2's reflex
-rows use (`session_meta.json`, the capture tool's speech bounds).
+rows use: the forced-aligned end of "hold"/"abort" (P15, `eval/anchors.py`); the trial
+logs time it from the capture tool's speech bounds (`session_meta.json`).
 
 **The harness is Exp-2's.** Same stream loop, core split (front core 0, back cores
 1-3), bus, subscriber and airborne FSM per trial; the only change is a Branch A that
@@ -173,15 +174,9 @@ def first_stop(row: dict) -> dict | None:
 
 def reflex_pass0() -> list[float]:
     """Exp-2 idle, first pass: the reflex path's latency from the same anchor."""
-    from eval.exp2 import first_own_event
+    from eval.exp2 import aligned_latencies
 
-    path = RESULTS / "exp2_raw" / "idle.jsonl"
-    out = []
-    for row in _read_rows(path):
-        event = first_own_event(row) if row["pass"] == 0 else None
-        if event is not None:
-            out.append(event["latency_offset_ms"])
-    return out
+    return [t["offset"] for t in aligned_latencies(_read_rows(RESULTS / "exp2_raw" / "idle.jsonl"))]
 
 
 def pi_golden_stops() -> list[float]:
@@ -214,8 +209,12 @@ def analyse() -> int:
     c_lo, c_hi = clopper_pearson(n - correct, n)
     s_lo, s_hi = clopper_pearson(n - n_stopped, n)
 
-    lat = [s["latency_offset_ms"] for s in stopped if s is not None]
-    endpoint = [r["segments"][0]["endpoint_after_offset_ms"] for r in rows if r["segments"]]
+    from eval.anchors import take_shift_ms
+
+    lat = [s["latency_offset_ms"] + take_shift_ms(r["take"], "offset")
+           for r, s in zip(rows, stopped) if s is not None]
+    endpoint = [r["segments"][0]["endpoint_after_offset_ms"] + take_shift_ms(r["take"], "offset")
+                for r in rows if r["segments"]]
     stt = [s["stt_ms"] for r in rows for s in r["segments"] if s.get("stt_ms") is not None]
     llm = [s["prefill_ms"] + s["decode_ms"] for r in rows for s in r["segments"]
            if s.get("prefill_ms") is not None]
@@ -231,8 +230,8 @@ def analyse() -> int:
         f"{n} recorded takes ({sum(r['class'] == 'swarm_hold' for r in rows)} `swarm hold`, "
         f"{sum(r['class'] == 'swarm_abort' for r in rows)} `swarm abort`), one pass, reflex path removed; "
         f"source `{path.relative_to(REPO)}`, host `{host}`, governor `{rows[0].get('governor') or '?'}`. "
-        "Latency is from keyword offset (the capture tool's speech bounds, Exp-2's reflex anchor) "
-        "to the FSM applying the command. Intervals: exact for proportions, order statistics "
+        "Latency is from keyword offset (the forced-aligned end of the phrase, P15; Exp-2's reflex "
+        "anchor) to the FSM applying the command. Intervals: exact for proportions, order statistics "
         "for percentiles.",
         "",
         "#### Recognition",

@@ -24,9 +24,11 @@ Final state on abort takes: acceptance {'ABORTED': 20}, onset {'ABORTED': 20}.
 
 #### Reflex path with the parse path on (ms, Pi)
 
+From the forced-aligned keyword offset (P15).
+
 | Mode | n | keyword offset, p50 [95% CI] | keyword offset, p95 [95% CI] |
 | :--- | ---: | :--- | :--- |
-| `acceptance` | 39 | 196 [155, 235] | 545 [435, --] |
-| `onset` | 39 | 195 [155, 236] | 545 [435, --] |
+| `acceptance` | 39 | 135 [35, 255] | 515 [385, --] |
+| `onset` | 39 | 135 [35, 255] | 515 [385, --] |
 
 SoC at trial start: 49.4-59.8 C; throttle word {'0x0': 80}.

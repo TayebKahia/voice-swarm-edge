@@ -46,17 +46,18 @@ One sample per endpointed segment.
 
 ### Reflex path with the take as the unit (ingenieur article, Exp-2)
 
-First pass of each take. Replay difference: largest absolute difference in
-latency from offset between the two passes of a take.
+First pass of each take, timed from the forced-aligned keyword (P15). Replay
+difference: largest absolute difference in latency from offset between the two
+passes of a take.
 
 #### idle
 
 | Measure | n | p50 [95% CI] (ms) | p95 [95% CI] (ms) |
 | :--- | ---: | ---: | ---: |
-| from keyword offset | 39 | 195 [155, 235] | 545 [436, --] |
-|   spotter delay + frame quantisation | 39 | 190 [150, 230] | 540 [430, --] |
+| from keyword offset | 39 | 135 [35, 255] | 515 [385, --] |
+|   spotter delay + frame quantisation | 39 | 130 [30, 250] | 510 [380, --] |
 |   Pi compute + publish | 39 | 5 [5, 5] | 5 [5, --] |
-| from keyword onset | 39 | 965 [885, 1,085] | 1,265 [1,225, --] |
+| from keyword onset | 39 | 1,055 [975, 1,175] | 1,355 [1,325, --] |
 
 Replay difference: max 0.3 ms, mean 0.1 ms over 39 takes.
 
@@ -68,10 +69,10 @@ Replay difference: max 0.3 ms, mean 0.1 ms over 39 takes.
 
 | Measure | n | p50 [95% CI] (ms) | p95 [95% CI] (ms) |
 | :--- | ---: | ---: | ---: |
-| from keyword offset | 39 | 209 [164, 242] | 556 [436, --] |
-|   spotter delay + frame quantisation | 39 | 190 [150, 230] | 540 [430, --] |
+| from keyword offset | 39 | 144 [48, 263] | 518 [394, --] |
+|   spotter delay + frame quantisation | 39 | 130 [30, 250] | 510 [380, --] |
 |   Pi compute + publish | 39 | 13 [7, 14] | 18 [16, --] |
-| from keyword onset | 39 | 967 [886, 1,086] | 1,266 [1,226, --] |
+| from keyword onset | 39 | 1,057 [985, 1,183] | 1,364 [1,326, --] |
 | preemption recovery (both passes) | 78 | 601 [411, 802] | 1,195 [1,042, 1,505] |
 
 Replay difference: max 12.4 ms, mean 5.8 ms over 39 takes.
