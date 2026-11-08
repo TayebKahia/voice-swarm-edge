@@ -199,3 +199,13 @@ demo_runs/
 *.soc
 # A-M2 few-shot baseline: base (not fine-tuned) weights, downloaded locally
 train/base_models/
+
+# ---------------------------------------------------------------------
+# Articles working files and prompts
+# ---------------------------------------------------------------------
+articles/FINAL_SESSION_PROMPTS.md
+articles/MY_EDITS.md
+articles/main_ing.pdf
+articles/main_mas.pdf
+articles/prompts/
+
