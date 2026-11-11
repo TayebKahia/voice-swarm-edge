@@ -910,8 +910,52 @@ direction.\added[id=PR]{ The schema encodes a counter-clockwise turn as a positi
 errors fall on the 12 rotation items phrased ``clockwise'' or ``right'': Qwen2.5-0.5B fails 11 of
 them and Llama-3.2-1B all 12, whereas neither fails any of the 5 items phrased ``counter-clockwise''
 or ``left'', or the 2 that say ``minus''. In training, 63 of the 120 rotation pairs are phrased
-counter-clockwise or left, all with a positive yaw, against 26 phrased clockwise or right, all but
-one with a negative yaw.}\chcomment[id=PR]{P9}
+counter-clockwise or left, all with a positive yaw, against 27 phrased clockwise or right, all but
+one with a negative yaw.}\chcomment[id=PR]{P9; count corrected in S1}
+
+\AuditAddedBlock{%
+\begin{table*}[t]
+\caption{Rotation-balanced retraining (exploratory). Ctrl: retrained on the original training set;
+S1: retrained on the set with 19 rotation pairs mirrored; same session, configuration and seed,
+decoded with \texttt{llama.cpp} under the grammar. Each cell gives Ctrl\,/\,S1. EM on the golden
+(200), synthetic (240) and out-of-domain (150) sets. $\Delta$: S1 minus Ctrl on the golden set,
+95\% CI by percentile bootstrap over the 12 command patterns; $p$: exact McNemar, item-level.
+CW/R: golden-set failures on the 12 rotation items phrased clockwise or right. Sign: yaw sign
+errors over both in-domain sets (440 items). The deployed artefacts are those of
+Table~\ref{tab:comparison}.\AuditID{S1}}
+\label{tab:s1}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llccccccc@{}}
+\toprule
+Model & Quant. & Golden EM & $\Delta$ [95\% CI] (pp) & $p$ & Synthetic EM & Out-of-domain EM & CW/R & Sign \\
+\midrule
+Qwen2.5-0.5B & \QE{} & 0.930\,/\,0.965 & $+3.5$ [$-1.1$, $+10.6$] & 0.065 & 0.958\,/\,0.971 & 0.733\,/\,0.740 & 11\,/\,3 & 18\,/\,8 \\
+             & \QF{} & 0.935\,/\,0.925 & $-1.0$ [$-3.6$, $+1.0$] & 0.63 & 0.954\,/\,0.971 & 0.747\,/\,0.767 & 11\,/\,10 & 18\,/\,15 \\
+Llama-3.2-1B & \QE{} & 0.920\,/\,0.930 & $+1.0$ [$-2.0$, $+4.4$] & 0.69 & 0.958\,/\,0.971 & 0.747\,/\,0.760 & 12\,/\,9 & 18\,/\,13 \\
+             & \QF{} & 0.915\,/\,0.915 & $\phantom{+}0.0$ [$-2.2$, $+2.4$] & 1.00 & 0.954\,/\,0.967 & 0.807\,/\,0.800 & 12\,/\,9 & 18\,/\,14 \\
+\bottomrule
+\end{tabular*}
+\end{table*}}
+
+\added[id=PR]{\textit{Rotation-balanced retraining (exploratory).} To test whether this imbalance causes
+the sign errors, we mirrored 19 positive-yaw rotation pairs of the training set, three whole value
+samples from three rotation patterns, negating the yaw and swapping the direction word, so that 46
+pairs are phrased counter-clockwise or left and 44 clockwise or right. The other 1,921 pairs, the
+configurations and the seed were unchanged, and no mirrored transcript occurs in a test set. Both
+leading models were retrained on the balanced set and, as a control, on the original set in the same
+session, then quantised and scored as above (Table~\ref{tab:s1}). The control separates the data
+change from rerun noise. It reproduced the deployed Qwen2.5-0.5B artefacts item for item on all three
+test sets; the Llama-3.2-1B control differed from the deployed artefacts on at most five items per
+in-domain set, but at \QE{} lost 8 out-of-domain items and gained none ($p = 0.008$). Against the
+control, balancing reduced the golden-set failures on clockwise or right phrasings from 46 to 31
+over the four artefacts, and the in-domain sign errors from 72 to 50. Most of the reduction came
+from Qwen2.5-0.5B at \QE{} (11 to 3); at \QF{} the same model went from 11 to 10, and Llama-3.2-1B
+from 12 to 9 at both levels. The imbalance therefore explains part of the error, and how much
+depends on the model and the quantisation level. No EM difference against the control is significant
+($p \geq 0.065$). The retrained models do not change the selection: at \QF{} Qwen2.5-0.5B still
+leads Llama-3.2-1B on the golden set (0.925 against 0.915; 7 items only Qwen2.5-0.5B parses, 5 only
+Llama-3.2-1B, $p = 0.77$), and Llama-3.2-1B still misses the language-model allowance. The deployed
+artefact, and every other figure in this paper, is unchanged.}\chcomment[id=PR]{S1}
 
 \subsection{Selection rule}
 \label{sec:res-selection}
@@ -1051,7 +1095,9 @@ angle, or training data balanced across the two directions, would test this dire
 this one pattern holds most of the errors of both leading models, the outcome would also bear on
 their ranking.}{One untested
 explanation is that the schema encodes direction as a sign, so a spoken ``clockwise'' must become
-a minus sign that the transcript never contains.}\chcomment[id=PR]{P9} The training data teach \texttt{unknown} through
+a minus sign that the transcript never contains.}\chcomment[id=PR]{P9}\added[id=PR]{ Retraining on
+balanced data (Section~\ref{sec:res-ood}, Table~\ref{tab:s1}) cut these errors by about a third
+without changing the ranking, so the imbalance is one cause but not the only one.}\chcomment[id=PR]{S1} The training data teach \texttt{unknown} through
 81 out-of-scope utterances and through none in which a supported command is made unreadable. Two
 remedies follow\added[id=PR]{ for abstention}: a confidence gate that routes low-probability decodes to \texttt{unknown}, and
 training pairs that map degraded commands to \texttt{unknown}. Neither was implemented here.
