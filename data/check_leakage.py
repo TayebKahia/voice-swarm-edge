@@ -330,6 +330,17 @@ def main() -> int:
         default=0.85,
         help="Jaccard similarity threshold for near-duplicate surface form rejection (default: 0.85).",
     )
+    parser.add_argument(
+        "--train",
+        type=Path,
+        default=None,
+        help="Training file to check instead of data/train.jsonl (e.g. a retrained variant's).",
+    )
+    parser.add_argument(
+        "--with-ood",
+        action="store_true",
+        help="Also compare the training file against data/test_ood.jsonl.",
+    )
     args = parser.parse_args()
 
     print("Running Gate 2 split leakage verification...")
@@ -352,7 +363,7 @@ def main() -> int:
     # augmentation, because a row's variants must land in its own split. Both
     # layouts are read here so the gate works before and after that step.
     raw_pairs_file = DATA_DIR / "raw_pairs.jsonl"
-    train_file = DATA_DIR / "train.jsonl"
+    train_file = args.train or DATA_DIR / "train.jsonl"
     val_file = DATA_DIR / "val.jsonl"
     test_file = DATA_DIR / "test_synth.jsonl"
     golden_file = DATA_DIR / "test_golden.jsonl"
@@ -364,7 +375,7 @@ def main() -> int:
     train_rows: list[dict[str, Any]] = []
 
     if train_file.is_file():
-        print("[*] Inspecting pre-split files for leakage...")
+        print(f"[*] Inspecting pre-split files for leakage (train: {train_file.name})...")
         train_rows = _rows(train_file)
         for split_file, split_name in [(val_file, "val"), (test_file, "test_synth")]:
             if split_file.is_file():
@@ -384,6 +395,8 @@ def main() -> int:
 
     if train_rows and golden_file.is_file():
         held_out_sets.append(("test_golden", _rows(golden_file)))
+    if train_rows and args.with_ood:
+        held_out_sets.append(("test_ood", _rows(DATA_DIR / "test_ood.jsonl")))
 
     if train_rows:
         for split_name, held_rows in held_out_sets:

@@ -1,0 +1,23 @@
+{
+  "model": "qwen2.5-0.5b-instruct-s1",
+  "hf_id": "Qwen/Qwen2.5-0.5B-Instruct",
+  "precision": "fp16",
+  "system_role_supported": true,
+  "best_val_exact_match": 0.9291666666666667,
+  "history": [
+    {
+      "epoch": 1.0,
+      "val_exact_match": 0.8666666666666667
+    },
+    {
+      "epoch": 2.0,
+      "val_exact_match": 0.9125
+    },
+    {
+      "epoch": 3.0,
+      "val_exact_match": 0.9291666666666667
+    }
+  ],
+  "final_train_loss": 0.13582520931959152,
+  "dropped_over_max_len": 0
+}

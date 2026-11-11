@@ -14,6 +14,7 @@ disagree about whether a prediction is correct --- silently, since both would ru
 
 Usage:
     python train/make_kaggle_bundle.py
+    python train/make_kaggle_bundle.py --s1   # adds data/train_s1_balanced.jsonl (review S1)
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 OUTPUT = REPO / "train" / "pfe_kaggle_data.zip"
+OUTPUT_S1 = REPO / "train" / "pfe_kaggle_data_s1.zip"
 
 #: Published path inside the zip -> source in the repo. The published paths are
 #: what the notebook opens, so they are part of its interface.
@@ -46,26 +48,38 @@ CONTENTS: dict[str, str] = {
     "configs/h2o-danube3-500m.yaml": "train/configs/h2o-danube3-500m.yaml",
 }
 
+#: S1 (review A-M4b): the rotation-balanced training file for the retrained variant,
+#: read by train/kaggle_s1_rotation.ipynb. Everything else is the deployed bundle.
+S1_CONTENTS: dict[str, str] = {
+    "data/train_s1_balanced.jsonl": "data/train_s1_balanced.jsonl",
+}
 
-def build(output: Path = OUTPUT) -> Path:
-    missing = [src for src in CONTENTS.values() if not (REPO / src).is_file()]
+
+def build(output: Path = OUTPUT, contents: dict[str, str] = CONTENTS) -> Path:
+    missing = [src for src in contents.values() if not (REPO / src).is_file()]
     if missing:
         raise SystemExit("missing from the repo:\n  " + "\n  ".join(missing))
 
     output.parent.mkdir(parents=True, exist_ok=True)
     # Deterministic member order so the zip's digest changes only when content does.
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-        for published in sorted(CONTENTS):
-            archive.write(REPO / CONTENTS[published], published)
+        for published in sorted(contents):
+            archive.write(REPO / contents[published], published)
     return output
 
 
 def main() -> int:
-    output = build()
+    s1 = "--s1" in sys.argv[1:]
+    contents = CONTENTS | S1_CONTENTS if s1 else CONTENTS
+    output = build(OUTPUT_S1 if s1 else OUTPUT, contents)
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
     print(f"wrote {output.relative_to(REPO)}  ({output.stat().st_size / 1e6:.2f} MB)")
     print(f"sha256 {digest}")
-    print(f"members {len(CONTENTS)}")
+    print(f"members {len(contents)}")
+    if s1:
+        print("\nUpload as a NEW Kaggle Dataset named  pfe-swarm-data-s1  and attach it to\n"
+              "train/kaggle_s1_rotation.ipynb (leave the deployed pfe-swarm-data as it is).")
+        return 0
     print(
         "\nUpload as a Kaggle Dataset named  pfe-swarm-data\n"
         "  Kaggle -> Datasets -> New Dataset -> upload this zip -> title 'pfe-swarm-data'\n"

@@ -31,6 +31,7 @@ Usage:
     python eval/surface_b.py
     python eval/surface_b.py --no-grammar        # the Table 19 ablation
     python eval/surface_b.py --models qwen2.5-0.5b-instruct-Q4_K_M
+    python eval/surface_b.py --gguf-dir gguf_s1 --out-dir results/s1   # review S1 variant
 """
 
 from __future__ import annotations
@@ -183,7 +184,18 @@ def run(argv: Sequence[str] | None = None) -> int:
                         help="Table 19's ablation: decode without the GBNF constraint")
     parser.add_argument("--csv", type=Path)
     parser.add_argument("--fresh", action="store_true", help="ignore existing predictions")
+    parser.add_argument("--gguf-dir", type=Path, default=None,
+                        help="artefacts to sweep instead of gguf/ (e.g. gguf_s1)")
+    parser.add_argument("--out-dir", type=Path, default=None,
+                        help="write surface_b_preds/ and the CSV here instead of results/")
     args = parser.parse_args(argv)
+
+    global GGUF_DIR, RESULTS, PREDICTIONS
+    if args.gguf_dir:
+        GGUF_DIR = args.gguf_dir.resolve()
+    if args.out_dir:
+        RESULTS = args.out_dir.resolve()
+        PREDICTIONS = RESULTS / "surface_b_preds"
 
     if not LLAMA_SERVER.is_file():
         raise SystemExit(f"llama-server not built at {LLAMA_SERVER}")
@@ -217,7 +229,8 @@ def run(argv: Sequence[str] | None = None) -> int:
         for record in records:
             writer.writerow(record)
 
-    print(f"\nwrote {csv_path.relative_to(REPO)}  ({len(records)} rows)")
+    shown = csv_path.relative_to(REPO) if csv_path.is_relative_to(REPO) else csv_path
+    print(f"\nwrote {shown}  ({len(records)} rows)")
     return 0
 
 
