@@ -6,21 +6,21 @@
 [![Inference](https://img.shields.io/badge/Inference-llama.cpp%20%7C%20whisper.cpp-purple.svg)](https://github.com/ggerganov)
 [![License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](LICENSE) [![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-lightgrey.svg)](LICENSE-DATA.md)
 
-> **Zero-cloud, fully offline natural language command and control for autonomous drone swarms, running in real time on a Raspberry Pi 5.**
+> **Natural language command and control for a simulated drone swarm with no cloud or internet: speech recognition and a fine-tuned small language model run on a Raspberry Pi 5.**
 
 ---
 
 ## Overview
 
-Operating a drone swarm in remote, GPS-degraded, or communications-denied environments requires high-level tactile interaction without relying on centralized cloud infrastructure. **Voice-Swarm-Edge** provides a complete, mathematically grounded spoken-language interface designed to run entirely on edge hardware (Raspberry Pi 5 with 8 GB RAM, ARM Cortex-A76).
+Operating a drone swarm in remote, GPS-degraded, or communications-denied environments requires high-level tactile interaction without relying on centralized cloud infrastructure. **Voice-Swarm-Edge** provides a complete spoken-language interface whose speech and language pipeline runs on edge hardware (Raspberry Pi 5 with 8 GB RAM, ARM Cortex-A76).
 
-Natural spoken commands (e.g., *"Swarm, form a line with two-meter spacing at five meters altitude"*) are captured, endpointed, transcribed, and parsed into validated JSON flight primitives, which are executed in a simulated multi-UAV environment with real-time aerodynamics and collision avoidance.
+Natural spoken commands (e.g., *"Swarm, form a line with two-meter spacing at five meters altitude"*) are captured, endpointed, transcribed, and parsed into validated JSON flight primitives, which are executed in a simulated multi-UAV environment running on a workstation.
 
 ---
 
 ## Key Highlights
 
-- **100% Offline Edge Execution**: Full speech recognition, SLM intent extraction, and swarm flight physics execute locally on a single Raspberry Pi 5 with zero internet connection.
+- **No Cloud, No Internet**: Keyword spotting, speech recognition and SLM intent extraction run locally on a single Raspberry Pi 5. The flight state machine, controller and simulation run on a workstation linked over Wi-Fi. Live-microphone runs with the Pi's internet and DNS blocked are in [`results/closed_loop.md`](results/closed_loop.md).
 - **Dual-Path Latency Architecture**:
   - **Branch A (Reflex Path, target ≤ 150 ms — measured p95: 515 ms idle, 518 ms loaded, MISSED)**: Direct wake-word spotting (`openWakeWord` ONNX model) dedicated exclusively to safety-critical commands (`swarm abort` and `swarm hold`). Preempts Branch B by sequence counter.
   - **Branch B (Language Path, target ≤ 2,500 ms p95 — measured p95: 3,122 ms, MISSED)**: Silero VAD endpointing $\to$ `whisper.cpp` (`tiny.en`) $\to$ Fine-tuned Small Language Model (SLM) with strict GBNF grammar-constrained decoding.
@@ -28,7 +28,7 @@ Natural spoken commands (e.g., *"Swarm, form a line with two-meter spacing at fi
   1. **Structural Enforcement (GBNF)**: Grammar-constrained logits masking guarantees 100% valid JSON syntax at generation time.
   2. **Semantic Grounding (Pydantic)**: Physical bounding, velocity clamping, and coordinate validation reject out-of-envelope commands without hallucination.
   3. **Operational Legality (Swarm FSM)**: Drone state transitions are guarded against illegal orders (e.g., flight maneuvers while disarmed).
-- **Physics Simulation & Workstation HUD**: Real-time multi-UAV aerodynamics via PyFlyt and PyBullet with smooth tracking cameras and Pygame telemetry display.
+- **Physics Simulation & Workstation Display**: Multi-UAV simulation on a PyFlyt/PyBullet rigid-body backend or a NumPy kinematic backend, with a matplotlib display.
 
 ---
 
@@ -82,7 +82,7 @@ Natural spoken commands (e.g., *"Swarm, form a line with two-meter spacing at fi
 ## Directory Structure
 
 ```
-├── demo/         # Real-time multi-drone workstation GUI, HUD, and PyBullet 3D visualizer
+├── demo/         # Workstation display and PyBullet 3D visualizer
 ├── runtime/      # Edge audio capture, Silero VAD, whisper.cpp & llama.cpp runners, UDP/JSON bus
 │   └── models/   # Reflex ONNX heads (swarm_hold.onnx, swarm_abort.onnx)
 ├── swarm/        # Swarm FSM, numpy controller, PyFlyt link, and collision avoidance
@@ -147,7 +147,7 @@ python runtime/main.py --bus-host 127.0.0.1 --source data/audio/s1/0001.wav
 
 ## 🍓 Mode 2: Complete Raspberry Pi 5 Edge Deployment
 
-To deploy the physical, real-time audio pipeline on a Raspberry Pi 5:
+To deploy the live audio pipeline on a Raspberry Pi 5:
 
 ### 1. Install System Prerequisites on Pi OS (Debian 12 Bookworm)
 ```bash
@@ -236,20 +236,21 @@ To reset an emergency `ABORTED` state (non-vocal by design):
 
 ## Evaluation & Reproducibility
 
-Every table and figure in the research is backed by frozen datasets and committed trial logs in `results/`. To reproduce the benchmark evaluations:
+Every table and figure in the research is backed by frozen datasets and committed trial logs in `results/`. The script below runs the automated pipeline stages; the experiment runners on the Pi and the workstation are started separately:
 
 ```bash
-# Run the full automated evaluation suite
+# Run the automated pipeline stages
 ./run_all.sh
 ```
 
 ### Benchmark Summary
 
 - **Exp-0 (Acoustic Sensitivity)**: Evaluates `whisper.cpp` across accent subsets using Mozilla Common Voice 17.0.
-- **Exp-1 (SLM Comparison & Grammar Ablation)**: Measures exact-match JSON generation across 4 model families (`Qwen2.5-0.5B`, `SmolLM2-360M`, `Llama-3.2-1B`, `H2O-Danube3-500M`) with and without GBNF constrained decoding.
+- **Exp-1 (SLM Comparison & Grammar Ablation)**: Measures exact-match JSON generation across 4 fine-tuned model families (`Qwen2.5-0.5B`, `SmolLM2-360M`, `Llama-3.2-1B`, `H2O-Danube3-500M`). The three quantized models are also scored with and without GBNF constrained decoding; `H2O-Danube3-500M` failed the tokenizer-parity gate and is reported at fp16 only.
 - **Exp-2 (Dual-Path Latency Profiling)**: Measures end-to-end timing on Raspberry Pi 5. Branch A p95 measured at 515 ms idle and 518 ms loaded from the forced-aligned end of the keyword (target ≤ 150 ms, **MISSED**); almost all of it is the spotter's decision delay, the board adding 5–18 ms. Branch B end-to-end p95 measured at 3,122 ms (target ≤ 2,500 ms, **MISSED**). See [`results/exp2_latency_budget.md`](results/exp2_latency_budget.md) for the full breakdown and [`results/forced_align_anchors.md`](results/forced_align_anchors.md) for the keyword anchors.
 - **Exp-3 (Acoustic Robustness)**: Evaluates command recognition under synthetic and real ambient noise across calibrated SNR levels (20 dB down to 5 dB).
 - **Exp-4 (Formation Flight Validation)**: Validates swarm formation convergence and inter-agent collision separation clamps.
+- **Closed loop (after the thesis)**: Live microphone on the Pi to simulated vehicles over Wi-Fi, online and with the Pi's internet blocked. See [`results/closed_loop.md`](results/closed_loop.md). [`results/requirements_summary.md`](results/requirements_summary.md) is the thesis table as submitted, written before these runs, so it still lists offline operation and the live demonstration as not yet run.
 
 ---
 
